@@ -89,7 +89,7 @@ Pick by playtest: time to clear the first slope, crash rate, self-reported feel.
 ## Implementation Priority (Levels of Quality)
 | Level | Content | Status |
 |---|---|---|
-| Core | Steering, tuck, jump, crash, trees/rocks/stumps/ramps, one endless seeded slope | Not started |
+| Core | Steering, tuck, jump, crash, trees/rocks/stumps/ramps, one endless seeded slope | M0 prototype |
 | Expected | Chunk library and finish gate, tricks, dogs and traffic, near misses, control-scheme setting | Not started |
 | Desired | Conditions, secrets (mushroom, burning trees), slalom chunks | Not started |
 | Aspirational | Chunk editor, community seeds | Not started |

@@ -64,7 +64,7 @@ Summits are 1,200 m long. The boss is visible from the start, 1.5 screens back, 
 ## Implementation Priority (Levels of Quality)
 | Level | Content | Status |
 |---|---|---|
-| Core | Yeti spawn, chase with direction caps, leash, catch, meter | Not started |
+| Core | Yeti spawn, chase with direction caps, leash, catch, meter | M0 prototype |
 | Expected | Edge Yetis, Top Yeti, stagger hooks, audio cues, eating animation | Not started |
 | Desired | Three Summit bosses, eats-skiers interaction | Not started |
 | Aspirational | Yeti personalities (patterns), a yeti bestiary page | Not started |
