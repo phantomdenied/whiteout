@@ -1,6 +1,6 @@
 # Yetis — Feature Document
 
-> **Version:** v1.0 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.1 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > The yeti is the clock (P1). It turns "ski down a hill" into "get down the hill *now*". It must be scary but fair: always escapable by clean skiing, and never invisible.
@@ -8,7 +8,7 @@
 ## Core Mechanics
 
 ### Basic rules
-- **Spawn:** after a **grace** period (8 s on slope 1, shrinking to 4 s by Mountain 3) the yeti appears at the top of the screen with a roar.
+- **Spawn:** after a **grace** period (8 s on slope 1, shrinking to 4 s by Mountain 3, never under 3 s from any effect) the yeti appears at the top of the screen with a roar.
 - **Chase:** it moves straight toward the skier at a capped speed, faster downhill than across the slope (a homage to the original's yeti, which had separate speed caps for each direction).
 - **Leash:** if it falls more than 1.5 screens behind, it teleports to 1.5 screens behind (offscreen). So you can never fully lose it, only stay ahead of it. Escaping means reaching the finish gate.
 - **Catch:** contact means you're eaten (a 2-second animation), and the run ends.
@@ -20,10 +20,11 @@
 | Yeti downhill speed | 14 m/s (Mountain 1) → 16 m/s (Mountain 3) | Faster than cruise (12), slower than tuck (18) |
 | Yeti cross-slope speed | 8 m/s | Big sideways detours are risky |
 | Yeti uphill speed | 4 m/s | |
-| Grace | 8 s → 4 s | |
+| Grace | 8 s → 4 s | Hard minimum 3 s after all modifiers (Curses, Altitude), Summits included |
+| **Pursuer cap** | 17.5 m/s | Applies to every yeti, boss and avalanche after all modifiers (Gear, Altitude). Clean tuck is 18 m/s. |
 | Leash | 1.5 screens | |
 
-**The design rule (enforced in tests):** yeti speed < clean tuck speed on every slope, after Conditions are applied. The yeti only catches you because of crashes, stops, snowplowing, and bad lines.
+**The design rule (enforced in tests):** every pursuer's speed ≤ the pursuer cap (17.5 m/s) < clean tuck speed (18 m/s), on every slope. Tuck speed is fixed: no Gear, Curse or skier may lower it. A Condition may lower it only if it slows pursuers by the same factor (Powder: both −20%). The yeti only catches you because of crashes, stops, snowplowing, and bad lines.
 
 Rough feel: one crash costs 1.4 s standing still (14 m/s × 1.4 s ≈ 20 m) plus about 1.5 s of re-acceleration (≈ 10 m more), so the yeti gains about 30 m. From a full leash (about 1.5 screens ≈ 60 m), two quick crashes, or a long stretch at cruise without tucking (losing 2 m/s), gets you caught at Mountain 1 speed. Simulator target: an average bot gets caught on 10–20% of Mountain 1 slopes.
 
@@ -40,11 +41,11 @@ A homage to the original's four yetis, one past each edge of the map:
 ### Summit bosses (one per mountain)
 | Mountain | Boss | Twist |
 |---|---|---|
-| 1 — Bunny Hill Range | **Big Yeti** | Faster than the normal yeti; jumps over obstacles in its way. A pure speed test. |
+| 1 — Bunny Hill Range | **Big Yeti** | 17 m/s, faster than the normal yeti; jumps over obstacles in its way. A pure speed test. |
 | 2 — Black Pine | **The Twins** | Two yetis that flank from the left and right (Edge Yetis that close in). A steering test. |
-| 3 — The Spine | **The Old One** | An avalanche and a yeti together: the wall closes slowly and the yeti breaks through it. The finale. |
+| 3 — The Spine | **The Old One** | An avalanche (capped at 15 m/s) and a yeti (17 m/s) together: the wall closes slowly and the yeti breaks through it. The finale. |
 
-Summits are 1,200 m long, with no grace period: the boss is visible from the start.
+Summits are 1,200 m long. The boss is visible from the start, 1.5 screens back, and holds still for the 3 s minimum grace.
 
 ### Edge cases
 - **Yeti reaches you mid-air:** you're caught on landing unless you land beyond its reach. This rewards big jumps.
@@ -72,3 +73,4 @@ Summits are 1,200 m long, with no grace period: the boss is visible from the sta
 | Version | Date | Change |
 |---|---|---|
 | v1.0 | 2026-10-17 | First draft |
+| v1.1 | 2026-10-17 | Pursuer cap (17.5 m/s), boss speeds, 3 s minimum grace incl. Summits |

@@ -1,6 +1,6 @@
 # Descent & Controls — Feature Document
 
-> **Version:** v1.0 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.1 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > Skiing should feel good on its own, before any yeti or Gear. Thirty seconds on a phone should be enough to carve, tuck, and jump on purpose.
@@ -25,7 +25,7 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 | World unit | 16 units = 1 m | Same scale as the original, for easy comparison |
 | Simulation tick | 60 Hz fixed | Deterministic; rendering interpolates |
 | Cruise top speed (straight down) | 12 m/s | |
-| Tuck top speed | 18 m/s | Must stay **above** base yeti speed (P5) |
+| Tuck top speed | 18 m/s | Fixed: no Gear, Curse or skier lowers it. Only Conditions that slow pursuers by the same factor may (see [Yetis](yetis.md#numbers-first-pass)) |
 | Acceleration to cruise | ~1.5 s from 0 | |
 | Snowplow | −50% speed | |
 | Airtime | 0.6 s (flick), 1.0–1.4 s (ramp) | |
@@ -60,7 +60,7 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 | Ice | Turning takes longer; random ice patches |
 | Night | Visible range shrinks to a lit cone ahead |
 | Fog | Obstacles appear later; the yeti meter becomes the main cue |
-| Avalanche | Replaces the yeti: a wall that accelerates slowly and can't be distracted |
+| Avalanche | Replaces the yeti: a wall that starts at 10 m/s and accelerates to the pursuer cap (17.5 m/s) over 30 s; can't be staggered |
 
 ### Edge cases
 - **Skiing uphill:** allowed, slowly (by heading sideways and tapping). It's useful for the stump→mushroom secret and nothing else; going far uphill wakes the Top Yeti (see [Yetis](yetis.md#edge-yetis)).
@@ -98,3 +98,4 @@ Pick by playtest: time to clear the first slope, crash rate, self-reported feel.
 | Version | Date | Change |
 |---|---|---|
 | v1.0 | 2026-10-17 | First draft |
+| v1.1 | 2026-10-17 | Avalanche speed defined; tuck speed made fixed |

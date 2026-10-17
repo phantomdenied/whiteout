@@ -1,6 +1,6 @@
 # Run Structure & Gear — Feature Document
 
-> **Version:** v1.0 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.1 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > Turn a great one-minute descent into a 20–30 minute run where your choices compound. Gear should change *how* you ski (P2), and routes should trade risk for reward.
@@ -11,7 +11,8 @@
 ```
 Skier pick ─▶ Mountain 1 map ─▶ … ─▶ Summit 1 ─▶ Mountain 2 map ─▶ … ─▶ Summit 2 ─▶ Mountain 3 ─▶ Summit 3 = WIN
 ```
-- 3 Mountains. Each map is 4 rows of nodes (2–3 choices per row) followed by the Summit.
+- 3 Mountains. Each map has 6 rows of nodes (2–3 choices per row) followed by the Summit.
+- **Row pattern:** Slope, Slope, Stop, Slope, Slope, Stop, then the Summit. Slope rows offer Slope or Black Diamond; Stop rows offer Lodge, Warming Hut, or Event. So every path is 4 slopes + 2 stops + the Summit.
 - You pick one node per row; paths branch and rejoin (Slay the Spire style). The whole map is visible from the start.
 
 ### Route map
@@ -20,10 +21,10 @@ Skier pick ─▶ Mountain 1 map ─▶ … ─▶ Summit 1 ─▶ Mountain 2 ma
 | **Slope** | A normal descent, then a reward pick |
 | **Black Diamond** | Difficulty +2 and a random Condition. A better reward pick (one rare guaranteed) and ×1.5 Tokens. |
 | **Lodge** | Shop: 3 Gear, 2 Snacks, 1 service (sell Gear, remove a Curse, reroll the shop) |
-| **Hot Cocoa** | Rest: refill Snacks to capacity, or remove a Curse, or upgrade one Gear |
+| **Warming Hut** | Rest: refill Snacks to capacity, or remove a Curse, or upgrade one Gear |
 | **Event** | A one-screen choice with a tradeoff, e.g. "Ski the closed run: +2 Gear picks, gain a Curse" |
 
-Each map has at least one Lodge and at least one Hot Cocoa.
+Each map's Stop rows include at least one Lodge and at least one Warming Hut.
 
 ### Style and Tokens
 | Source | Style |
@@ -35,9 +36,11 @@ Each map has at least one Lodge and at least one Hot Cocoa.
 | Close Call (finish with the yeti meter above 80%) | ×1.5 on the slope's total |
 | Crash | Resets the current combo; no Style lost |
 
-Style accumulates as **Chips × Mult**-style combos: consecutive tricks and near misses without a crash raise a combo multiplier (×1 → ×4). This reuses Spindle's proven scoring feel.
+Style accumulates as **Chips × Mult**-style combos: consecutive tricks and near misses without a crash raise a combo multiplier (×1 → ×4). The combo multiplies only trick and near-miss Style, never distance or gates. This reuses Spindle's proven scoring feel.
 
-**Tokens = Style ÷ 100**, rounded down, paid at the finish gate.
+**Tokens = Style ÷ 200**, rounded down, paid at the finish gate.
+
+Worked example (average Mountain 1 slope): 800 m distance (800) + 8 near misses (200) + 3 jumps of tricks (≈450). The 650 skill Style × an average combo of ×2 = 1,300. Total ≈ 2,100 Style → **10 Tokens**. A strong run (combo ×4, Close Call) ≈ 3,500 → 17. A clumsy one (no combo) ≈ 1,450 → 7. That fits the 8–12 target and rewards skill without breaking the shop.
 
 ### Reward pick
 After each Slope or Black Diamond: choose 1 of 3 (Gear, Snack, or Tokens). Rarity: Common 70% / Uncommon 25% / Rare 5% (Black Diamonds guarantee one Rare).
@@ -74,7 +77,7 @@ After each Slope or Black Diamond: choose 1 of 3 (Gear, Snack, or Tokens). Rarit
 | Hand Warmer | The next crash takes 0.3 s |
 
 ### Curses
-These come from Events and some Black Diamonds and stay until removed (at the Lodge or Hot Cocoa). Examples: "Squeaky Boots" (the yeti hears you: grace −2 s); "Rental Skis" (cruise speed −10%).
+These come from Events and some Black Diamonds and stay until removed (at the Lodge or Warming Hut). Examples: "Squeaky Boots" (the yeti hears you: grace −2 s, never below the 3 s minimum); "Rental Skis" (turning one step slower). Curses never lower tuck speed (see [Yetis](yetis.md#numbers-first-pass)).
 
 ### Starting skiers
 Each skier is a starting kit with a boon and a bane, the same idea as Spindle's starting decks.
@@ -82,19 +85,19 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 |---|---|---|---|
 | **The Rookie** | Starts with Bubble Wrap | — | Default |
 | **The Snowboarder** | A trick on every jump is free (no crash if you land mid-trick) | Can't snowplow | Clear Mountain 1 |
-| **The Retiree** | Starts with Rocket Boots (the secret turbo) | Cruise speed −10% | Find the mushroom secret |
+| **The Retiree** | Starts with Rocket Boots (the secret turbo) | Crash downtime +50% | Find the mushroom secret |
 | **The Dog** | Tiny hitbox; jumps everything except trees | No Skis slot | Hit 50 dogs |
 
 ### Meta progression
 - Unlocks add **options** (skiers, Gear in the pool, Conditions, Daily Seed), never raw power. P5: a skilled first-time player can win.
-- **Peaks:** after the first win, an ascension-style ladder of 10 difficulty tiers (faster yetis, shorter grace, more Conditions).
+- **Altitude:** after the first win, an ascension-style ladder of 10 difficulty tiers (faster yetis up to the pursuer cap, shorter grace down to the 3 s minimum, more Conditions).
 
 ### Numbers (first pass)
 | Quantity | Value |
 |---|---|
 | Tokens per average slope | ~8–12 |
 | Lodge prices | Common Gear 8, Uncommon 14, Rare 22, Snack 4, Reroll 3 (+1 each) |
-| Run length | 15 slopes (12 + 3 Summits) at ~1 min, plus menus ≈ 20–30 min |
+| Run length | 15 descents (12 slopes + 3 Summits) at ~1 min, plus 6 stops and menus ≈ 20–30 min |
 
 ## Player Experience
 - **Intended:** "One more run." Builds you name ("the dog-crash build"), route decisions that feel like bets.
@@ -102,7 +105,7 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 
 ## Relationship to Other Systems
 - **Depends on:** [Descent](descent-and-controls.md) (Style events, obstacle hooks) and [Yetis](yetis.md) (stagger, grace, Close Call).
-- **Affects:** the difficulty budget for slope generation (per slope and Peak).
+- **Affects:** the difficulty budget for slope generation (per slope and Altitude).
 
 ## Implementation Priority (Levels of Quality)
 | Level | Content | Status |
@@ -110,9 +113,10 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 | Core | Linear 3-mountain run, reward pick of 1 in 3 from 10 Gear, Tokens | Not started |
 | Expected | Route map, Lodge, Snacks, 30 Gear, Summits, save between slopes | Not started |
 | Desired | Events, Curses, 4 skiers, unlocks, Daily Seed | Not started |
-| Aspirational | 10 Peaks, Gear upgrades, run history | Not started |
+| Aspirational | 10 Altitudes, run history | Not started |
 
 ## Change Log
 | Version | Date | Change |
 |---|---|---|
 | v1.0 | 2026-10-17 | First draft |
+| v1.1 | 2026-10-17 | 6-row maps, Warming Hut, Altitude, Tokens ÷ 200 with worked example, combo scope, Retiree and Rental Skis changed to keep tuck speed fixed |

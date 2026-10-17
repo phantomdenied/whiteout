@@ -1,6 +1,6 @@
 # Whiteout — Game Design Document (Master)
 
-> **Version:** v1.0 · **Status:** Draft · **Last updated:** 2026-10-17
+> **Version:** v1.1 · **Status:** Draft · **Last updated:** 2026-10-17
 > **Working title:** *Whiteout* (placeholder — rename freely)
 
 This is the master document. It stays short and links out to Feature Documents for the detail. If a Feature Document and this file disagree, **the Feature Document is authoritative** for its system and this file should be fixed.
@@ -122,9 +122,9 @@ Light and absurd, told through item text and one line per Summit, like SkiFree's
 - **Slope traffic** (neutral hazards): dogs, other skiers, snowboarders, and the chairlift. They're obstacles with personality, not enemies.
 
 ## 7. Level Design
-- **Run = 3 Mountains.** Each mountain is a branching route map of 4 slopes ending at a **Summit** (boss chase).
+- **Run = 3 Mountains.** Each mountain is a branching route map of 6 rows ending at a **Summit** (boss chase): every path crosses 4 slopes and 2 stops.
 - **Slope** = 600–1,000 m of procedurally stitched **chunks** (hand-authored slope segments about one screen tall), built from a seed under a difficulty budget that rises per slope and per mountain.
-- **Map nodes:** Slope, Black Diamond (harder, more reward), Lodge (shop), Hot Cocoa (rest/heal-equivalent: refill Snacks, remove a Curse), Event (a one-screen choice).
+- **Map nodes:** slope rows offer Slope or Black Diamond (harder, more reward); stop rows offer Lodge (shop), Warming Hut (rest: refill Snacks, remove a Curse, or upgrade one Gear), or Event (a one-screen choice).
 - **Conditions** modify a whole slope: Powder, Ice, Night, Fog, Avalanche. Mountains 2 and 3 add them.
 
 Details: [Descent & Controls §Slope generation](features/descent-and-controls.md#slope-generation) and [Run Structure & Gear §Route map](features/run-structure-and-gear.md#route-map).
@@ -180,7 +180,7 @@ Same stack as Spindle: TypeScript + Vite + Vitest. The game is drawn on a 2D can
 | **IP:** too close to SkiFree (name, art, the "Abominable Snow Monster") | High | Original name, art, audio, and code. Yetis are folklore; ours get their own design and name. Mechanics are not copyrightable, but trade dress (look and feel) can be, so the art style is deliberately different. |
 | Phone steering feels imprecise at speed | High | M0 is entirely about feel. Try relative drag, tilt, and two-zone tap; pick by playtest. |
 | Procedural slopes feel samey | Medium | Hand-authored chunks with tags, Conditions, a themed mountain each, and Gear that changes how you read the slope. |
-| Deaths feel unfair (from behind, or off-screen) | Medium | The yeti meter, audio cues, a minimum grace period, and a yeti speed cap below clean-tuck speed (P5). |
+| Deaths feel unfair (from behind, or off-screen) | Medium | The yeti meter, audio cues, a minimum 3 s grace period on every slope (Summits included), and a hard pursuer speed cap below clean-tuck speed (P5). |
 | Balance: one Gear combo trivializes the yeti | Medium | Simulator bots for each build archetype; Summits test different skills. |
 | Scope creep from the "roguelike" layer | Medium | Milestones gate features; Feature Docs are written only for systems in development. |
 
@@ -195,10 +195,19 @@ Same stack as Spindle: TypeScript + Vite + Vitest. The game is drawn on a 2D can
 | **Condition** | A modifier for a whole slope (Powder, Ice, Night, Fog, Avalanche) |
 | **Yeti** | The main pursuer on every slope |
 | **Edge Yeti** | A pursuer that guards the slope's left/right bounds |
-| **Grace** | Time at the start of a slope before the yeti appears |
+| **Grace** | Time at the start of a slope before the yeti moves (never under 3 s) |
+| **Pursuer cap** | The hard speed limit for every yeti and avalanche (17.5 m/s), always below clean tuck speed (18 m/s) |
+| **Leash** | The yeti never falls more than 1.5 screens behind; if it does, it jumps forward to that distance |
+| **Stagger** | A short stop forced on the yeti by Gear or Snacks (at most 3 s per slope) |
 | **Tuck** | Crouched stance: faster, wider turns |
-| **Style** | Points from tricks, gates, and near misses; converts to Tokens |
+| **Style** | Points from distance, tricks, gates, and near misses; converts to Tokens |
+| **Combo** | A multiplier (×1 → ×4) on trick and near-miss Style that builds until you crash |
+| **Close Call** | Finishing a slope with the yeti meter above 80%: ×1.5 Style |
 | **Token** | Run currency, spent at the Lodge |
+| **Black Diamond** | A harder slope node: difficulty +2, a Condition, better rewards |
+| **Lodge** | A stop node with the shop |
+| **Warming Hut** | A stop node for rest: refill Snacks, remove a Curse, or upgrade one Gear |
+| **Altitude** | A post-win difficulty tier (1–10), like an ascension ladder |
 | **Gear** | A passive, rule-bending item for the rest of the run (slotted) |
 | **Snack** | A one-use consumable |
 | **Curse** | A negative modifier picked up from Events or Black Diamonds |
@@ -208,3 +217,4 @@ Same stack as Spindle: TypeScript + Vite + Vitest. The game is drawn on a 2D can
 | Version | Date | Change |
 |---|---|---|
 | v1.0 | 2026-10-17 | First draft (gdd init) |
+| v1.1 | 2026-10-17 | Audit fixes: 6-row maps (4 slopes + 2 stops), pursuer cap, 3 s minimum grace, Hot Cocoa node → Warming Hut, Peaks → Altitude, glossary completed |
