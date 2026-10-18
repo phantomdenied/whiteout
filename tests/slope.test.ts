@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { botInput } from '../src/bot';
 import { CHUNKS, CHUNK_COLS, CHUNK_ROWS } from '../src/chunks';
 import { CFG, newGame, step } from '../src/engine';
+import { modsFor } from '../src/gear';
 import { MOUNTAINS, SLOPES_PER_MOUNTAIN, TOTAL_SLOPES, diamondParams, slopeParams, summitParams } from '../src/run';
 import { CONDITION_IDS, KINDS, LINE, type Obstacle, type ObstacleKind, SLOPE, buildSlope, chaseGap, findLine } from '../src/slope';
 
@@ -69,11 +70,11 @@ describe('slope generation', () => {
     expect(chaseGap(line, CFG.tuck, p.yetiSpeed, p.grace)).toBeGreaterThanOrEqual(LINE.minGap);
   });
 
-  it('the clean-skier bot clears every slope and Summit of a run, and Black Diamonds under every Condition', () => {
+  it('the clean-skier bot clears every slope and Summit of a run, and Black Diamonds under every Condition but Avalanche', () => {
     const descents = [
       ...Array.from({ length: TOTAL_SLOPES }, (_, i) => ({ label: `slope ${i + 1}`, params: slopeParams(i) })),
       ...MOUNTAINS.map((_, m) => ({ label: `summit ${m + 1}`, params: summitParams(m) })),
-      ...CONDITION_IDS.map((c) => ({ label: `mountain 2 diamond ${c}`, params: diamondParams(SLOPES_PER_MOUNTAIN + 3, c) })),
+      ...CONDITION_IDS.filter((c) => c !== 'avalanche').map((c) => ({ label: `mountain 2 diamond ${c}`, params: diamondParams(SLOPES_PER_MOUNTAIN + 3, c) })),
     ];
     descents.forEach(({ label, params }, i) => {
       const g = newGame(2024 + i, { params });
@@ -83,6 +84,23 @@ describe('slope generation', () => {
       }
       expect(g.result, label).toBe('cleared');
     });
+  });
+
+  it('an Avalanche Black Diamond buries the starting kit, but a run of speed and control upgrades clears it', () => {
+    const built = modsFor(['bubble-wrap', 'carving-skis', 'aero-helmet', 'carbon-poles', 'rubber-chicken', 'snowshoes']);
+    let base = 0, upgraded = 0;
+    for (let seed = 1; seed <= 10; seed++) {
+      for (const [mods, count] of [[modsFor(['bubble-wrap']), () => base++], [built, () => upgraded++]] as const) {
+        const g = newGame(seed * 101, { params: diamondParams(SLOPES_PER_MOUNTAIN * 2 + 3, 'avalanche'), mods });
+        while (!g.over && g.tick < 60 * 300) {
+          step(g, botInput(g));
+          g.events.length = 0;
+        }
+        if (g.result === 'cleared') count();
+      }
+    }
+    expect(base).toBeLessThanOrEqual(2);
+    expect(upgraded).toBeGreaterThanOrEqual(8);
   });
 
   it('a skier who never tucks gets caught', () => {

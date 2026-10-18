@@ -238,7 +238,7 @@ export interface Input {
   brake: boolean;
   /** Edge-triggered: true for the one tick the jump was pressed (in the air it does a Spread Eagle). */
   jump: boolean;
-  /** Edge-triggered: a trick swiped this tick (in the air only). */
+  /** Edge-triggered: a trick swiped this tick (while tucked it pops you into the air; in the air it chains). */
   trick?: TrickKind;
   /** Edge-triggered: index of the Snack to use this tick. */
   snack?: number;
@@ -501,19 +501,17 @@ function updateSkier(g: Game, input: Input) {
         boost(s, 1);
       }
     }
-    if (input.jump) {
+    // A trick swiped while tucked pops you into the air and straight into it, no jump needed.
+    const popTrick = input.trick && s.tuck ? input.trick : undefined;
+    if (input.jump || popTrick) {
       s.air = s.airTotal = (m.springHop ? CFG.springAir : CFG.hopAir) * m.airMult;
       s.airKind = m.springHop ? 'ramp' : 'hop';
       g.events.push({ type: 'jump' });
     }
+    if (popTrick) startTrick(g, popTrick);
   } else {
     const kind: TrickKind | undefined = input.trick ?? (input.jump ? 1 : undefined);
-    if (kind && s.tricks < CFG.maxTricks && s.trickT <= 0) {
-      s.tricks++;
-      s.trickKinds = [...s.trickKinds, kind];
-      s.trickT = TRICKS[kind].time;
-      g.events.push({ type: 'trick', n: s.tricks, kind });
-    }
+    if (kind) startTrick(g, kind);
     s.trickT = Math.max(0, s.trickT - dt);
     s.air -= dt;
     if (s.air <= 0) {
@@ -696,6 +694,16 @@ function updateYeti(g: Game, y: Yeti) {
   y.vy = vy;
   y.x += vx * dt;
   y.y += vy * dt;
+}
+
+/** Begin a trick pose (in the air, when the last one has finished and there's room for another). */
+function startTrick(g: Game, kind: TrickKind) {
+  const s = g.skier;
+  if (s.tricks >= CFG.maxTricks || s.trickT > 0) return;
+  s.tricks++;
+  s.trickKinds = [...s.trickKinds, kind];
+  s.trickT = TRICKS[kind].time;
+  g.events.push({ type: 'trick', n: s.tricks, kind });
 }
 
 /** Slalom: crossing a gate's line between its poles (and on your feet) makes it. */

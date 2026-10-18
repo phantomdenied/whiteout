@@ -282,11 +282,12 @@ export function slalomParams(mountain: number): SlopeParams {
   return { length: 450 + mountain * 75, difficulty: 2 + mountain * 0.5, mountain, yetiSpeed: 0, grace: 99, gates: 'course' };
 }
 
-/** The Condition (if any) on the node at (mountain, row, col). Avalanches only from the second mountain on. */
+/** The Condition (if any) on the node at (mountain, row, col). Avalanches only on Black Diamonds, from the second mountain on. */
 export function conditionAt(seed: number, mountain: number, row: number, col: number, kind: NodeKind, altitude = 0): Condition | undefined {
   const rng = createRng(mix(seed, 3000 + mountain * 100 + row * 10 + col));
   if (kind !== 'diamond' && rng() >= CONDITION_CHANCE[mountain] + altitude * ALTITUDE.conditionPerLevel) return undefined;
-  const pool = CONDITION_IDS.filter((c) => c !== 'avalanche' || mountain > 0);
+  // Avalanches are Black Diamond only: always optional, since every slope row has a plain Slope too.
+  const pool = CONDITION_IDS.filter((c) => c !== 'avalanche' || (mountain > 0 && kind === 'diamond'));
   return pool[Math.floor(rng() * pool.length)];
 }
 

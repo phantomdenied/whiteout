@@ -15,7 +15,7 @@ New in M4:
 - **Sound:** synthesized effects, a ski hiss and yeti footsteps. Toggle on the title or pause screen, or press `M`.
 - **Run summary:** the end screen shows your route and copies a text summary (handy for feedback).
 - **Slalom:** gates on some slopes (they mark a safe line and build your combo), and a no-yeti Slalom bonus stage on the map that pays per gate.
-- **Avalanches** stay right on your heels: one crash and you're buried, but they pay double Tokens and a rare.
+- **Avalanche Black Diamonds** (optional): the wall stays 10 m behind you, nearly as fast as your tuck. Built to need speed and control upgrades; pays triple Tokens and two rares.
 - **Attract mode:** the start screen shows the bot skiing demo descents (it comes back after 45 s idle on the title).
 - **Install it:** on iPhone, Share → Add to Home Screen; on Android, the *Install app* button. Works offline once installed.
 
@@ -23,9 +23,10 @@ See the [design document](docs/GDD.md).
 
 ## Play
 - **Drag** left/right anywhere to steer (relative to where your thumb lands). **Hold your thumb low** to tuck (faster, wider turns). **Drag up** to slow down.
-- **Double-tap** to jump. In the air, **swipe up** (Spread Eagle), **left** (Helicopter) or **right** (Backflip) for a trick, up to 3 per jump; longer tricks score more, mixing them scores a bonus. Land mid-trick and you crash.
+- **Tricks:** while tucked, **swipe up** (Spread Eagle), **left** (Helicopter) or **right** (Backflip): you pop straight into the trick. Swipe again in the air to chain (three need extra air from Gear or a ramp). Longer tricks score more, mixing them scores a bonus. Land mid-trick and you crash.
+- **Double-tap** to jump (hop over rocks, stumps and dogs).
 - **Snacks:** tap one (top right) to use it. Desktop: 1–3.
-- Desktop: ← → steer, ↓ tuck, ↑ slow, Space jump, Z / X / C tricks, 1–4 pick a reward, Esc pause, Enter continue, M sound on/off.
+- Desktop: ← → steer, ↓ tuck, ↑ slow, Space jump, ↓ + Z / X / C tricks, 1–4 pick a reward, Esc pause, Enter continue, M sound on/off.
 - The yeti comes after a few seconds. It's faster than cruising and slower than a clean tuck. Crashes cost 1.4 s, and that's how it catches you.
 - Hop over rocks, stumps, dead trees, dogs and moguls. Trees need a ramp (or Spring Boots).
 - Add `?seed=123` to replay a run, `?bot` to let the clean-skier bot drive, `?mountain=1&row=6` to start further in (0-based; row 6 is the Summit).

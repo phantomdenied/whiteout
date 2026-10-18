@@ -16,7 +16,7 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 - **Slow down:** drag up to snowplow: −50% speed. A sideways heading stops you quickly.
 - **Jump:** double-tap. You're airborne for about 0.6 s (longer off ramps), passing over low obstacles (stumps, rocks, small dogs, moguls). Trees still hit you unless the jump is from a ramp.
 - **Slalom gates:** pairs of flags, 3.6 m apart, centered on the generator's clean line (so the gates show a safe way down). Passing between them on your feet scores 30 Style × the combo and adds 1 to the combo; missing one scores nothing. 35% of plain slopes (no Avalanche, not Black Diamonds) have a slalom section in their middle third, a gate every 22 m.
-- **Tricks:** swipe in the air, up to 3 per jump. A clean landing scores Style; landing mid-trick is a crash. Swipes only count in the air; on the ground a fast sideways drag is steering.
+- **Tricks:** while tucked (thumb held low), swipe up, left or right: you pop into the air and straight into the trick, no jump needed. Swipe again in the air to chain, up to 3 per jump. A clean landing scores Style; landing mid-trick is a crash. Upright on the ground, a fast sideways drag is just steering.
 
 | Swipe | Trick | Pose time | Style |
 |---|---|---|---|
@@ -24,7 +24,7 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 | Left | Helicopter | 0.30 s | 70 |
 | Right | Backflip | 0.38 s | 110 |
 
-Several tricks in one jump: the sum × 1.5 (two) or × 2 (three), and × 1.25 more if none repeats. A 0.6 s hop fits one trick, or two short ones started fast; three need a ramp or Spring Boots. Desktop: Space jumps (and does a Spread Eagle in the air), Z / X / C do the three tricks.
+Several tricks in one jump: the sum × 1.5 (two) or × 2 (three), and × 1.25 more if none repeats. A 0.6 s pop fits one trick, or two Spread Eagles; three need more air: Hang Time, Spring Boots, or a ramp (by design, the big combos need upgrades). Desktop: hold ↓ and press Z / X / C; Space jumps (and does a Spread Eagle in the air).
 - **Crash:** a hit sends you tumbling for 1.0 s, then 0.4 s getting up (with no control), then you restart from speed 0. Crashing has no other penalty; the cost is the time the yeti gains.
 - **Near miss:** passing within 0.5 m of an obstacle at speed scores Style and fills the whoosh meter (used by some Gear).
 
@@ -73,7 +73,7 @@ Mountain 1 slopes have none; 30% of mountain 2 slopes and 50% of mountain 3 slop
 | Ice | Every turn 25% slower; bluer snow. The validator demands a straighter line (at most ~27° instead of 45°). Ice patches are not built yet |
 | Night | Dark except a headlamp pool just ahead of the skier |
 | Fog | A white wall that thickens with distance downhill: obstacles appear late |
-| Avalanche | Replaces the yeti. When the grace ends the wall roars in and then stays at most **18 m behind you** the whole way (15.5 → 16 m/s; a clean tuck is 18). You can never build a lead, so one crash (≈23 m lost) buries you unless Gear softens it (Rubber Chicken, Stunt Double, Hand Warmer). Slopes are 1.5 difficulty easier (an open race), the camera zooms out to keep the wall in view, and the run pays 2× Tokens and a guaranteed rare. Can't be staggered. Simulated clean bot: 95% / 78% of mountain 2 / 3 avalanche slopes, 85% / 60% of avalanche Black Diamonds |
+| Avalanche | **Black Diamonds only** (mountains 2–3), so always optional. Replaces the yeti: when the grace ends the wall roars in and then stays at most **10 m behind you** at 16.5 → 17 m/s, barely below a clean tuck (18). No lead to bank; a crash or a few seconds out of the tuck buries you. **Built to need upgrades:** in the simulator the starting kit is buried every time, pure speed or pure crash builds fall short on mountain 3, and speed + control (Carving Skis, Aero Helmet, Carbon Poles, Rubber Chicken, Snowshoes) clears 97–100%. Slopes are 1.5 difficulty easier (an open race), the camera zooms out to keep the wall in view, and it pays 3× Tokens (2× on top of the Black Diamond's 1.5×) and two guaranteed rares. Can't be staggered |
 
 Simulator (clean bot, hardest Black Diamond of each mountain): 100% under every Condition on mountains 1–2, 87–100% on mountain 3.
 

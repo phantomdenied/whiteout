@@ -492,6 +492,29 @@ describe('tricks', () => {
     }
   });
 
+  it('a swipe while tucked pops you straight into the trick; not tucked, it does nothing on the ground', () => {
+    const g = slope();
+    run(g, 1, tuck);
+    step(g, { ...tuck, trick: 3 });
+    expect(g.skier.air).toBeGreaterThan(0);
+    expect(g.skier.trickKinds).toEqual([3]);
+    run(g, 1, tuck);
+    expect(g.events.find((e) => e.type === 'land')).toMatchObject({ kinds: [3], style: TRICKS[3].style });
+
+    const upright = slope();
+    run(upright, 1);
+    step(upright, { ...NO_INPUT, trick: 3 });
+    expect(upright.skier.air).toBe(0);
+    expect(upright.skier.tricks).toBe(0);
+  });
+
+  it('a plain hop fits two short tricks at most; three need more air (Hang Time, Spring Boots) or a ramp', () => {
+    const hop = CFG.hopAir;
+    expect(TRICKS[1].time * 2).toBeLessThan(hop);
+    expect(TRICKS[1].time * 3).toBeGreaterThan(hop);
+    expect(TRICKS[1].time * 3).toBeLessThan(hop * 1.4);
+  });
+
   it('combos multiply, mixing tricks earns a bonus, and a combo too long for the hop botches', () => {
     expect(trickStyle([1, 1])).toBe(80 * 1.5);
     expect(trickStyle([1, 2])).toBe(110 * 1.5 * 1.25);

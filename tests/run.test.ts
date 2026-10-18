@@ -128,20 +128,26 @@ describe('route map', () => {
     expect(descentsDone(perfect)).toBe(descentsDone(run));
   });
 
-  it('Avalanche descents pay double Tokens and guarantee a rare (two on a Black Diamond)', () => {
+  it('Avalanches are Black Diamond only, and pay 3× Tokens (2× on top of 1.5×) and two guaranteed rares', () => {
     for (let seed = 1; seed < 400; seed++) {
       let r: RunState = newRun(seed);
       r = { ...r, mountain: 1, map: generateMap(seed, 1) };
-      const col = r.map.rows[0].findIndex((n, c) => n.kind === 'slope' && conditionAt(seed, 1, 0, c, 'slope') === 'avalanche');
+      const col = r.map.rows[0].findIndex((n, c) => n.kind === 'diamond' && conditionAt(seed, 1, 0, c, 'diamond') === 'avalanche');
       if (col < 0) continue;
       const at = chooseNode(r, col);
       expect(paramsFor(at).condition).toBe('avalanche');
       const after = finishDescent(at, result(10));
-      expect(after.results.at(-1)!.tokens).toBe(20);
-      expect(GEAR.find((g) => g.id === (after.offer[0] as { id: string }).id)!.rarity).toBe('rare');
+      expect(after.results.at(-1)!.tokens).toBe(30);
+      for (const item of after.offer.slice(0, 2)) expect(GEAR.find((g) => g.id === (item as { id: string }).id)!.rarity).toBe('rare');
       return;
     }
     throw new Error('no avalanche slope found');
+  });
+
+  it('plain Slopes never get an Avalanche, so every route has a way down without upgrades', () => {
+    for (let seed = 1; seed <= 200; seed++) for (const m of [1, 2]) for (const row of [0, 1, 3, 4]) {
+      expect(conditionAt(seed, m, row, 0, 'slope', 10)).not.toBe('avalanche');
+    }
   });
 
   it('some plain slopes have a slalom section; Avalanches and Black Diamonds never do', () => {

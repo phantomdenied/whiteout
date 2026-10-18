@@ -68,7 +68,7 @@ export const CONDITIONS: Record<Condition, {
   ice: { name: 'Ice', text: 'Hard ice: every turn is 25% slower.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 0.75 },
   night: { name: 'Night', text: 'You can only see what your headlamp lights up.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1 },
   fog: { name: 'Fog', text: 'Obstacles appear late out of the fog. Watch the yeti meter.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1 },
-  avalanche: { name: 'Avalanche', text: 'No yeti. An avalanche instead, right on your heels the whole way: one crash and you\'re buried. Pays double Tokens and a rare.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1, wall: { start: 15.5, max: 16, ramp: 10, leash: 18 } },
+  avalanche: { name: 'Avalanche', text: 'No yeti. An avalanche right on your heels, nearly as fast as your tuck: you\'ll want speed and control Gear, and a clean run. Pays triple Tokens and two rares.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1, wall: { start: 16.5, max: 17, ramp: 10, leash: 10 } },
 };
 export const CONDITION_IDS = Object.keys(CONDITIONS) as Condition[];
 

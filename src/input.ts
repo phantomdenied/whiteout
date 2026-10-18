@@ -1,6 +1,6 @@
 // Turns touches and keys into engine Input. Control scheme A from descent-and-controls.md:
 // drag sideways to steer (relative to where the thumb landed), hold low to tuck, drag up to slow,
-// double-tap to jump, and in the air swipe up / left / right for the three tricks.
+// double-tap to jump, and swipe up / left / right while tucked (or in the air) for the three tricks.
 // Desktop: arrow keys, Space to jump, Z / X / C for tricks.
 import type { Input, TrickKind } from './engine';
 
@@ -43,7 +43,7 @@ export class Controls {
     target: HTMLElement,
     private getAngle: () => number,
     private onKey: (key: string) => void,
-    /** Swipes are tricks only in the air; on the ground a fast sideways drag is just steering. */
+    /** Swipes are tricks only while tucked or in the air; otherwise a fast sideways drag is just steering. */
     private getAirborne: () => boolean = () => false,
   ) {
     target.addEventListener('pointerdown', (e) => this.down(e));
@@ -137,9 +137,11 @@ export class Controls {
     t.moved = Math.max(t.moved, Math.hypot(t.x - t.x0, t.y - t.y0));
     t.samples.push({ x: t.x, y: t.y, t: e.timeStamp });
     while (t.samples.length > 2 && e.timeStamp - t.samples[0].t > FLICK_MS) t.samples.shift();
-    if (!this.getAirborne()) return;
-    // Swipe: a fast stroke up (Spread Eagle), left (Helicopter) or right (Backflip). Re-anchor so the stroke
-    // doesn't also count as braking or steering.
+    // Tucked = the thumb held low; judged from where the stroke began, since a swipe up moves the thumb.
+    const tucked = t.samples[0].y - t.y0 > HOLD_PX;
+    if (!tucked && !this.getAirborne()) return;
+    // Swipe: a fast stroke up (Spread Eagle), left (Helicopter) or right (Backflip). Shift the anchor by the
+    // stroke so it doesn't also steer or pull you out of the tuck.
     const dx = t.x - t.samples[0].x;
     const dy = t.samples[0].y - t.y;
     let kind: TrickKind | undefined;
@@ -149,7 +151,7 @@ export class Controls {
     if (kind) {
       this.trickQueued = kind;
       t.x0 += dx;
-      t.y0 = t.y;
+      t.y0 -= dy;
       t.samples = [{ x: t.x, y: t.y, t: e.timeStamp }];
     }
   }

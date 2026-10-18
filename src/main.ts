@@ -172,13 +172,11 @@ function attractInput(g: Game) {
   const input = botInput(g, attractSloppy ? { lapses: 0.0007 } : {});
   const s = g.skier;
   if (s.state !== 'ski') return input;
-  if (s.air > 0) {
-    // The clean skier does one quick trick (anything fits in a hop if started early); the greedy one keeps going.
-    const go = (s.tricks === 0 || greedy) && s.airTotal - s.air > 0.08;
-    return { ...input, trick: go ? ((1 + Math.floor(Math.random() * 3)) as 1 | 2 | 3) : undefined };
-  }
+  const anyTrick = () => (1 + Math.floor(Math.random() * 3)) as 1 | 2 | 3;
+  // The clean skier pops one trick from a tuck on a straight; the greedy one keeps chaining in the air.
+  if (s.air > 0) return { ...input, trick: greedy && s.trickT <= 0 ? anyTrick() : undefined };
   greedy = attractSloppy && Math.random() < 0.3;
-  if (input.tuck && s.speed > 14 && Math.abs(s.angle) < 0.15 && Math.random() < 0.006) return { ...input, jump: true };
+  if (input.tuck && s.speed > 14 && Math.abs(s.angle) < 0.15 && Math.random() < 0.006) return { ...input, trick: anyTrick() };
   return input;
 }
 
@@ -428,7 +426,7 @@ function showTitle() {
       <dt>Tuck (faster)</dt><dd>Hold your thumb low · ↓</dd>
       <dt>Slow down</dt><dd>Drag up · ↑</dd>
       <dt>Jump</dt><dd>Double-tap · Space</dd>
-      <dt>Tricks (in the air)</dt><dd>Swipe up, left or right · Z X C. Land before the trick ends or you crash.</dd>
+      <dt>Tricks</dt><dd>While tucked, swipe up, left or right · ↓ + Z X C. Swipe again in the air to chain. Land before a trick ends or you crash.</dd>
       <dt>Snack</dt><dd>Tap it, top right · 1–3</dd>
     </dl>
     <div class="actions">

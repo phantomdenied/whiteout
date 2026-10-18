@@ -65,7 +65,8 @@ This is the master document. It stays short and links out to Feature Documents f
 > A loss should feel like your line choice, not the generator.
 
 - ✅ Seeded slopes (shareable seeds), generation from hand-made chunks with a difficulty budget.
-- ✅ Every slope is beatable without Gear at its intended difficulty (verified by the simulator).
+- ✅ Every route down has a path beatable without Gear: plain Slopes and all Summits (verified by the simulator).
+- ✅ Optional content may *need* a run of upgrades: Avalanche Black Diamonds (the starting kit can't outrun the wall) and three-trick combos (more air than a plain pop). That's the payoff for building well, and it's always a choice on the map.
 - ❌ Unavoidable obstacle walls, yetis faster than a clean tuck.
 
 ## 3. Core Gameplay
@@ -223,3 +224,4 @@ Same stack as Spindle: TypeScript + Vite + Vitest. The game is drawn on a 2D can
 | v1.3 | 2026-10-18 | M2 prototype built |
 | v1.4 | 2026-10-18 | M3 prototype built |
 | v1.5 | 2026-10-18 | M4 built except art: unlocks, Altitude, Daily Seed, audio, run summary, PWA |
+| v1.6 | 2026-10-18 | Design rule: the critical path (a plain route and the Summits) is beatable on skill alone; optional content (Avalanche Black Diamonds, three-trick combos) needs upgrades |
