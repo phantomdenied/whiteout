@@ -8,8 +8,17 @@ import type { Input, TrickKind } from './engine';
 const STEER_PX = 110;
 /** Pixels of vertical offset from the touch point before tuck / brake kicks in. */
 const HOLD_PX = 36;
-const FLICK_PX = 26;
-const FLICK_MS = 120;
+/**
+ * A swipe (trick) must be a deliberate stroke, not a steering correction: at least this share of the screen
+ * width (and SWIPE_MIN_PX), covered within SWIPE_MS, and at least SWIPE_DOMINANCE times further along its
+ * direction than across it. Steering drags are slower and shorter.
+ */
+const SWIPE_SHARE = 0.18;
+const SWIPE_MIN_PX = 60;
+const SWIPE_MS = 100;
+const SWIPE_DOMINANCE = 2;
+/** After a swipe, ignore strokes for this long, so one swipe never fires twice. */
+const SWIPE_COOLDOWN_MS = 220;
 const TAP_MS = 220;
 const TAP_PX = 12;
 /** A second tap starting this soon after the first, near it, is a double tap (jump). */
@@ -38,6 +47,7 @@ export class Controls {
   private trickQueued: TrickKind | undefined;
   private snackQueued: number | undefined;
   private lastTap = { t: -Infinity, x: 0, y: 0 };
+  private lastSwipe = -Infinity;
 
   constructor(
     target: HTMLElement,
@@ -136,7 +146,8 @@ export class Controls {
     t.y = e.clientY;
     t.moved = Math.max(t.moved, Math.hypot(t.x - t.x0, t.y - t.y0));
     t.samples.push({ x: t.x, y: t.y, t: e.timeStamp });
-    while (t.samples.length > 2 && e.timeStamp - t.samples[0].t > FLICK_MS) t.samples.shift();
+    while (t.samples.length > 2 && e.timeStamp - t.samples[0].t > SWIPE_MS) t.samples.shift();
+    if (e.timeStamp - this.lastSwipe < SWIPE_COOLDOWN_MS) return;
     // Tucked = the thumb held low; judged from where the stroke began, since a swipe up moves the thumb.
     const tucked = t.samples[0].y - t.y0 > HOLD_PX;
     if (!tucked && !this.getAirborne()) return;
@@ -145,10 +156,12 @@ export class Controls {
     const dx = t.x - t.samples[0].x;
     const dy = t.samples[0].y - t.y;
     let kind: TrickKind | undefined;
-    if (dy > FLICK_PX && dy > Math.abs(dx)) kind = 1;
-    else if (-dx > FLICK_PX && -dx > Math.abs(dy)) kind = 2;
-    else if (dx > FLICK_PX && dx > Math.abs(dy)) kind = 3;
+    const min = Math.max(SWIPE_MIN_PX, window.innerWidth * SWIPE_SHARE);
+    if (dy > min && dy > Math.abs(dx) * SWIPE_DOMINANCE) kind = 1;
+    else if (-dx > min && -dx > Math.abs(dy) * SWIPE_DOMINANCE) kind = 2;
+    else if (dx > min && dx > Math.abs(dy) * SWIPE_DOMINANCE) kind = 3;
     if (kind) {
+      this.lastSwipe = e.timeStamp;
       this.trickQueued = kind;
       t.x0 += dx;
       t.y0 -= dy;
