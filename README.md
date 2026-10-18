@@ -14,6 +14,7 @@ New in M4:
 - **Daily run:** the same mountain for everyone each day (UTC). Your best and attempts are kept.
 - **Sound:** synthesized effects, a ski hiss and yeti footsteps. Toggle on the title or pause screen, or press `M`.
 - **Run summary:** the end screen shows your route and copies a text summary (handy for feedback).
+- **Attract mode:** the start screen shows the bot skiing demo descents (it comes back after 45 s idle on the title).
 - **Install it:** on iPhone, Share → Add to Home Screen; on Android, the *Install app* button. Works offline once installed.
 
 See the [design document](docs/GDD.md).

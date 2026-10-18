@@ -19,6 +19,7 @@ import {
 import { Sound, type SoundName } from './audio';
 import { SKIERS, SKIER_IDS, SLOT_LABEL, SNACKS, type SkierId, type SnackId, curseById, displaced, gearById } from './gear';
 import { Controls } from './input';
+import { CONDITION_IDS } from './slope';
 import { type Profile, UNLOCKS, isUnlocked, loadProfile, recordDescent, recordRun, runSummaryText } from './profile';
 import { Renderer } from './render';
 import { randomSeed } from './rng';
@@ -34,6 +35,7 @@ import {
   SLOPES_PER_MOUNTAIN,
   SUMMIT_ROW,
   TOTAL_DESCENTS,
+  TOTAL_SLOPES,
   buyGear,
   buySnack,
   chooseEvent,
@@ -42,6 +44,7 @@ import {
   currentEvent,
   currentNode,
   dailySeed,
+  diamondParams,
   descentsDone,
   deserialize,
   eventChoiceAvailable,
@@ -61,8 +64,10 @@ import {
   sellPrice,
   serialize,
   slopeInMountain,
+  slopeParams,
   snackSlots,
   startAt,
+  summitParams,
   todayUTC,
   totals,
   useHut,
@@ -100,12 +105,17 @@ const hud = {
   mult: $<HTMLElement>('#mult'),
 };
 
-/** title → skier → map → (intro → playing ⇄ paused → reward | lodge | hut | event) → map … → won / lost. */
-type Mode = 'title' | 'skier' | 'map' | 'intro' | 'playing' | 'paused' | 'reward' | 'lodge' | 'hut' | 'event' | 'won' | 'lost';
-let mode: Mode = 'title';
+/** attract → title → skier → map → (intro → playing ⇄ paused → reward | lodge | hut | event) → map … → won / lost. */
+type Mode = 'attract' | 'title' | 'skier' | 'map' | 'intro' | 'playing' | 'paused' | 'reward' | 'lodge' | 'hut' | 'event' | 'won' | 'lost';
+let mode: Mode = 'attract';
 let pendingSeed = initialSeed();
 let run: RunState = newRun(pendingSeed);
-let game: Game = previewGame();
+/** Attract mode: the bot skis demo descents behind the start screen, title and skier select. */
+let attractNo = Math.floor(Math.random() * 1000);
+let attractOverAt = 0;
+let lastInput = performance.now();
+const ATTRACT_IDLE_MS = 45_000;
+let game: Game = attractGame();
 let acc = 0;
 let last = 0;
 let shownSnacks = '';
@@ -136,6 +146,30 @@ function initialSeed(): number {
 function descentGame(r: RunState): Game {
   return newGame(nodeSeed(r), { params: paramsFor(r), mods: runMods(r), snacks: r.snacks });
 }
+/** A real descent for the demo: slopes from all three mountains, now and then a Black Diamond or a Summit. */
+function attractGame(): Game {
+  const n = attractNo++;
+  const slope = (n * 7) % TOTAL_SLOPES;
+  const params = n % 5 === 4
+    ? summitParams(n % MOUNTAINS.length)
+    : n % 5 === 2
+      ? diamondParams(slope, CONDITION_IDS[n % CONDITION_IDS.length])
+      : slopeParams(slope);
+  return newGame(randomSeed(), { params: { ...params, grace: Math.min(params.grace, 4) } });
+}
+
+/** The demo skier: the clean-line bot, plus the odd hop-and-trick on a straight stretch (one trick lands safely). */
+function attractInput(g: Game) {
+  const input = botInput(g);
+  const s = g.skier;
+  if (s.state !== 'ski') return input;
+  if (s.air > 0) return { ...input, jump: s.tricks === 0 && s.airTotal - s.air > 0.08 };
+  if (input.tuck && s.speed > 14 && Math.abs(s.angle) < 0.15 && Math.random() < 0.006) return { ...input, jump: true };
+  return input;
+}
+
+const attracting = () => mode === 'attract' || mode === 'title' || mode === 'skier';
+
 function previewGame(): Game {
   return newGame(pendingSeed, { params: { length: 600, difficulty: 2.5, mountain: run.mountain, yetiSpeed: 14, grace: 99 } });
 }
@@ -224,11 +258,15 @@ function follow(next: RunState) {
 }
 
 function setMode(next: Mode) {
+  const wasAttracting = attracting();
   mode = next;
   overlay.hidden = mode === 'playing';
-  if (mode !== 'playing' && mode !== 'paused' && mode !== 'title' && mode !== 'skier') saveRun();
+  app.classList.toggle('attract', mode === 'attract');
+  app.classList.toggle('demo', attracting());
+  if (attracting() && !wasAttracting) newAttract();
+  if (mode !== 'playing' && mode !== 'paused' && !attracting()) saveRun();
   const show: Record<Mode, () => void> = {
-    title: showTitle, skier: showSkier, map: showMap, intro: showIntro, paused: showPaused, reward: showReward,
+    attract: showAttract, title: showTitle, skier: showSkier, map: showMap, intro: showIntro, paused: showPaused, reward: showReward,
     lodge: showLodge, hut: showHut, event: showEvent, won: showWon, lost: showLost, playing: () => {},
   };
   show[mode]();
@@ -251,6 +289,10 @@ function pause() {
 }
 
 function onKey(key: string) {
+  if (mode === 'attract') {
+    setMode('title');
+    return;
+  }
   if (key === 'Escape' || key === 'p' || key === 'F3') {
     if (mode === 'playing') pause();
     else if (mode === 'paused') setMode('playing');
@@ -278,6 +320,9 @@ snackBar.addEventListener('click', (e) => {
   if (b && mode === 'playing') controls.queueSnack(Number(b.dataset.i));
 });
 document.addEventListener('visibilitychange', () => document.hidden && pause());
+// Document level: steering captures the pointer, which retargets the click away from the overlay.
+document.addEventListener('click', () => mode === 'attract' && setMode('title'));
+for (const type of ['pointerdown', 'keydown'] as const) document.addEventListener(type, () => (lastInput = performance.now()), { capture: true });
 // Audio may only start from a user gesture.
 document.addEventListener('pointerdown', () => sound.unlock(), { capture: true });
 document.addEventListener('keydown', () => sound.unlock(), { capture: true });
@@ -336,6 +381,22 @@ function dailyHtml(): string {
   const d = profile.daily[date];
   const score = d ? ` · Your best: ${d.won ? 'won' : `${d.descents}/${TOTAL_DESCENTS}`} (${d.attempts} ${d.attempts === 1 ? 'try' : 'tries'})` : '';
   return `<span class="meta">Daily ${date}: the same mountain for everyone, as the Rookie${score}</span>`;
+}
+
+function newAttract() {
+  game = attractGame();
+  attractOverAt = 0;
+  renderer.reset(game);
+  acc = 0;
+}
+
+function showAttract() {
+  const best = loadBest();
+  card.innerHTML = `
+    <h1 class="logo">Whiteout</h1>
+    <p class="tagline">Something is chasing you.</p>
+    <p class="press">Tap to start</p>
+    <span class="meta">${best ? `Best: ${best} of ${TOTAL_DESCENTS} descents` : 'A downhill roguelike'}</span>`;
 }
 
 function showTitle() {
@@ -853,27 +914,96 @@ function updateSnackBar() {
     .join('');
 }
 
+/** DOM writes cost style and layout work even when the value is the same, so only write changes. */
+const shown = new WeakMap<object, string>();
+function setText(el: HTMLElement, text: string) {
+  if (shown.get(el) === text) return;
+  shown.set(el, text);
+  el.textContent = text;
+}
+function setStyle(el: HTMLElement, prop: 'width' | 'opacity', value: string) {
+  const key = el.style;
+  if (shown.get(key) === prop + value) return;
+  shown.set(key, prop + value);
+  el.style[prop] = value;
+}
+
 function updateHud() {
-  hud.dist.textContent = distance(game).toLocaleString();
-  hud.length.textContent = `/${game.params.length} m`;
-  hud.speed.textContent = String(Math.round(game.skier.speed));
-  hud.slope.textContent = run.row === SUMMIT_ROW ? `${run.mountain + 1}-S` : `${run.mountain + 1}-${slopeInMountain(run.row) + 1}`;
-  hud.style.textContent = style(game).toLocaleString();
+  if (attracting()) return;
+  setText(hud.dist, distance(game).toLocaleString());
+  setText(hud.length, `/${game.params.length} m`);
+  setText(hud.speed, String(Math.round(game.skier.speed)));
+  setText(hud.slope, run.row === SUMMIT_ROW ? `${run.mountain + 1}-S` : `${run.mountain + 1}-${slopeInMountain(run.row) + 1}`);
+  setText(hud.style, style(game).toLocaleString());
   const mult = multiplier(game);
-  hud.mult.textContent = mult > 1 ? `×${mult % 1 ? mult.toFixed(1) : mult}` : '';
-  trail.dataset.rating = currentNode(run)?.kind === 'diamond' ? 'black' : rating(game.params.difficulty);
-  trail.classList.toggle('double', currentNode(run)?.kind === 'diamond');
+  setText(hud.mult, mult > 1 ? `×${mult % 1 ? mult.toFixed(1) : mult}` : '');
+  const diamond = currentNode(run)?.kind === 'diamond';
+  const r = diamond ? 'black' : rating(game.params.difficulty);
+  if (trail.dataset.rating !== r) trail.dataset.rating = r;
+  if (trail.classList.contains('double') !== diamond) trail.classList.toggle('double', diamond);
   const p = yetiProximity(game);
-  meterFill.style.width = `${Math.round(p * 100)}%`;
-  meterFill.classList.toggle('close', p > 0.6);
-  meter.setAttribute('aria-valuenow', String(Math.round(p * 100)));
+  const pct = Math.round(p * 100);
+  setStyle(meterFill, 'width', `${pct}%`);
+  if (meterFill.classList.contains('close') !== p > 0.6) meterFill.classList.toggle('close', p > 0.6);
+  if (meter.getAttribute('aria-valuenow') !== String(pct)) meter.setAttribute('aria-valuenow', String(pct));
   const waiting = game.yetis.every((y) => y.state === 'waiting' || y.state === 'holding') && !game.wall?.armed;
   const name = game.params.boss ? BOSSES[game.params.boss].name : game.params.condition === 'avalanche' ? 'avalanche' : 'yeti';
-  meterLabel.textContent = waiting
+  setText(meterLabel, waiting
     ? `${game.params.boss ? name : game.params.condition ? CONDITIONS[game.params.condition].name : 'quiet'} · ${Math.max(0, Math.ceil(graceFor(game) - game.time))}s`
-    : game.yetis.some((y) => y.stunT > 0) ? 'staggered' : p > 0.75 ? 'right behind you' : p > 0.4 ? 'closing' : name;
-  frost.style.opacity = String(Math.max(0, (p - 0.5) * 2));
+    : game.yetis.some((y) => y.stunT > 0) ? 'staggered' : p > 0.75 ? 'right behind you' : p > 0.4 ? 'closing' : name);
+  setStyle(frost, 'opacity', mode === 'playing' || mode === 'paused' ? (Math.round(Math.max(0, (p - 0.5) * 2) * 50) / 50).toString() : '0');
   updateSnackBar();
+}
+
+// ---------- Loop ----------
+
+// ---------- Interpolation ----------
+// The simulation runs at a fixed 60 Hz, but screens refresh at 60, 90 or 120 Hz with jittery timing. Drawing the
+// newest state makes some frames show no movement and others two steps (stutter), so each frame draws the moving
+// things blended between the last two simulation steps.
+
+interface Snapshot { game: Game | null; x: number; y: number; yetis: { x: number; y: number }[]; wall: number }
+const prev: Snapshot = { game: null, x: 0, y: 0, yetis: [], wall: 0 };
+
+function snapshot(g: Game) {
+  prev.game = g;
+  prev.x = g.skier.x;
+  prev.y = g.skier.y;
+  prev.yetis = g.yetis.map((y) => ({ x: y.x, y: y.y }));
+  prev.wall = g.wall?.y ?? 0;
+}
+
+const lerp = (a: number, b: number, t: number) => (Math.abs(b - a) > 5 ? b : a + (b - a) * t);
+
+/** Draw with positions blended toward the previous step, then put the true positions back. */
+function drawInterpolated(g: Game, dt: number, alpha: number) {
+  if (prev.game !== g || alpha >= 1) {
+    renderer.draw(g, dt);
+    return;
+  }
+  const s = g.skier;
+  const x = s.x, y = s.y, wall = g.wall?.y ?? 0;
+  const yetis = g.yetis.map((v) => ({ x: v.x, y: v.y }));
+  s.x = lerp(prev.x, x, alpha);
+  s.y = lerp(prev.y, y, alpha);
+  g.yetis.forEach((v, i) => {
+    const p = prev.yetis[i];
+    if (!p) return;
+    v.x = lerp(p.x, v.x, alpha);
+    v.y = lerp(p.y, v.y, alpha);
+  });
+  if (g.wall) g.wall.y = lerp(prev.wall, wall, alpha);
+  try {
+    renderer.draw(g, dt);
+  } finally {
+    s.x = x;
+    s.y = y;
+    g.yetis.forEach((v, i) => {
+      v.x = yetis[i].x;
+      v.y = yetis[i].y;
+    });
+    if (g.wall) g.wall.y = wall;
+  }
 }
 
 // ---------- Loop ----------
@@ -881,19 +1011,39 @@ function updateHud() {
 function frame(now: number) {
   const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
   last = now;
+  const demo = attracting();
+  let stepping = false;
   if (mode === 'playing') {
+    stepping = true;
     acc += dt;
     while (acc >= CFG.dt) {
+      snapshot(game);
       step(game, BOT ? botInput(game) : controls.read());
       acc -= CFG.dt;
       for (const e of game.events) handle(e);
       game.events.length = 0;
       if (mode !== 'playing') break;
     }
+  } else if (demo) {
+    stepping = !game.over;
+    acc += dt;
+    while (acc >= CFG.dt && !game.over) {
+      snapshot(game);
+      step(game, attractInput(game));
+      acc -= CFG.dt;
+      for (const e of game.events) if (e.type === 'crash' || e.type === 'eaten') renderer.bump(8);
+      game.events.length = 0;
+    }
+    // Demo descent over: a beat to see how it ended, then the next one.
+    if (game.over) {
+      attractOverAt ||= now;
+      if (now - attractOverAt > 1800) newAttract();
+    }
+    if (mode === 'title' && now - lastInput > ATTRACT_IDLE_MS) setMode('attract');
   }
   const air = game.skier.air > 0;
   sound.update(dt, mode === 'playing', game.skier.speed, air, mode === 'playing' ? yetiProximity(game) : 0);
-  renderer.draw(game, mode === 'playing' ? dt : 0);
+  drawInterpolated(game, mode === 'playing' || demo ? dt : 0, stepping ? acc / CFG.dt : 1);
   updateHud();
   requestAnimationFrame(frame);
 }
@@ -903,5 +1053,5 @@ if ('serviceWorker' in navigator && document.querySelector('link[rel="manifest"]
   window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 
-setMode('title');
+setMode('attract');
 requestAnimationFrame(frame);

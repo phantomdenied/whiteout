@@ -15,6 +15,9 @@ export class Sound {
   private hissGain: GainNode | null = null;
   private hissFilter: BiquadFilterNode | null = null;
   private stepClock = 0;
+  /** Last values sent to the hiss, so automation is only scheduled when they change (Safari slows down otherwise). */
+  private hissLevel = -1;
+  private hissFreq = -1;
   muted = false;
 
   /** Create (or resume) the audio context. Call from a click / tap handler. */
@@ -62,9 +65,16 @@ export class Sound {
     const ctx = this.ctx;
     if (!ctx || !this.hissGain || !this.hissFilter) return;
     const t = ctx.currentTime;
-    const hiss = playing && !airborne ? Math.min(0.12, speed / 150) : 0;
-    this.hissGain.gain.setTargetAtTime(hiss, t, 0.05);
-    this.hissFilter.frequency.setTargetAtTime(500 + speed * 90, t, 0.1);
+    const hiss = playing && !airborne ? Math.round(Math.min(0.12, speed / 150) * 200) / 200 : 0;
+    if (hiss !== this.hissLevel) {
+      this.hissLevel = hiss;
+      this.hissGain.gain.setTargetAtTime(hiss, t, 0.05);
+    }
+    const freq = Math.round((500 + speed * 90) / 50) * 50;
+    if (freq !== this.hissFreq) {
+      this.hissFreq = freq;
+      this.hissFilter.frequency.setTargetAtTime(freq, t, 0.1);
+    }
     if (!playing || proximity < 0.15) {
       this.stepClock = 0;
       return;
