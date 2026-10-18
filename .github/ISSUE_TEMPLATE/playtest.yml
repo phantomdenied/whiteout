@@ -1,0 +1,37 @@
+name: Playtest feedback
+description: Tell us how a run went.
+title: "Playtest: "
+labels: [playtest]
+body:
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: e.g. iPhone 13, Safari
+    validations:
+      required: true
+  - type: input
+    id: reached
+    attributes:
+      label: How far did you get?
+      placeholder: e.g. eaten on Mountain 2, slope 3 / beat The Twins
+  - type: input
+    id: seed
+    attributes:
+      label: Seed (shown on the title and end screens)
+  - type: textarea
+    id: controls
+    attributes:
+      label: How did the controls feel in the first 30 seconds?
+  - type: textarea
+    id: yeti
+    attributes:
+      label: Was the yeti scary? Did any death feel unfair?
+  - type: textarea
+    id: build
+    attributes:
+      label: Which Gear did you build around, and did it work?
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else (bugs, confusing moments, ideas)

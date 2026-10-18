@@ -2,6 +2,10 @@
 
 A downhill-skiing roguelike for phones: every slope is a chase, and the yeti is the clock. Inspired by SkiFree (1991); original name, art, and code.
 
+**Play it:** https://phantomdenied.github.io/whiteout/ (best on a phone, held upright)
+
+**Playtesting?** Play a run or two, then [leave feedback](https://github.com/phantomdenied/whiteout/issues/new?template=playtest.yml). The seed is on the title and end screens; include it if something odd happened.
+
 **Status: M2 — builds.** Each of the three mountains runs Slope, Slope, Lodge, Slope, Slope, Lodge, Summit. A reward pick after every descent (Gear, a Snack, or Tokens), a shop at every Lodge (buy, sell, reroll), 30 Gear across tuck / jump / crash / risk builds, 4 Snacks, and a boss on every Summit: Big Yeti, The Twins, The Old One. Runs save between stages. See the [design document](docs/GDD.md).
 
 ## Play
@@ -14,15 +18,15 @@ A downhill-skiing roguelike for phones: every slope is a chase, and the yeti is 
 - Add `?seed=123` to replay a run, `?bot` to let the clean-skier bot drive, `?stage=6` to start at a stage (0-based; 2 is the first Lodge, 6/13/20 are the Summits).
 
 ## Develop
-This is a separate app from Spindle, with its own package:
 ```bash
-cd whiteout
 npm install
 npm run dev           # local server (also reachable from your phone on the same Wi-Fi)
 npm test              # engine, slope, run and gear tests
 npm run sim           # bots ski every descent for 50 seeds (plain, cruiser, tuck build, crash build)
 npm run build:single  # dist/whiteout.html, one self-contained file
 ```
+
+Pushing to `main` runs the tests and deploys to GitHub Pages (`.github/workflows/pages.yml`).
 
 Code layout:
 - `src/engine.ts` — pure, deterministic simulation at a fixed 60 Hz (no DOM); all tuning in `CFG`
