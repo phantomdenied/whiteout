@@ -10,6 +10,8 @@ html = html.replace(/<script type="module" crossorigin src="([^"]+)"><\/script>/
   return `<script type="module">${read(src).replace(/<\/script/g, '<\\/script')}</script>`;
 });
 html = html.replace(/<link rel="stylesheet" crossorigin href="([^"]+)">/, (_, href) => `<style>${read(href)}</style>`);
+// The single file has no manifest, icons or service worker beside it.
+html = html.replace(/\s*<link rel="(manifest|icon|apple-touch-icon)"[^>]*>/g, '');
 
 writeFileSync(new URL('whiteout.html', dist), html);
 console.log('wrote dist/whiteout.html', html.length, 'bytes');

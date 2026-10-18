@@ -16,13 +16,17 @@ import {
   yetiProximity,
   yetiSpeedFor,
 } from './engine';
+import { Sound, type SoundName } from './audio';
 import { SKIERS, SKIER_IDS, SLOT_LABEL, SNACKS, type SkierId, type SnackId, curseById, displaced, gearById } from './gear';
 import { Controls } from './input';
+import { type Profile, UNLOCKS, isUnlocked, loadProfile, recordDescent, recordRun, runSummaryText } from './profile';
 import { Renderer } from './render';
 import { randomSeed } from './rng';
 import {
   HUT_CHOICES,
   type HutChoice,
+  type LogEntry,
+  MAX_ALTITUDE,
   type MapNode,
   MOUNTAINS,
   type OfferItem,
@@ -37,6 +41,7 @@ import {
   choices,
   currentEvent,
   currentNode,
+  dailySeed,
   descentsDone,
   deserialize,
   eventChoiceAvailable,
@@ -58,12 +63,15 @@ import {
   slopeInMountain,
   snackSlots,
   startAt,
+  todayUTC,
   totals,
   useHut,
 } from './run';
 
 const BEST_KEY = 'whiteout:best';
 const SAVE_KEY = 'whiteout:run';
+const PROFILE_KEY = 'whiteout:profile';
+const MUTE_KEY = 'whiteout:muted';
 const params = new URLSearchParams(location.search);
 /** ?bot lets the clean-skier bot drive (demos and testing). */
 const BOT = params.has('bot');
@@ -102,6 +110,18 @@ let acc = 0;
 let last = 0;
 let shownSnacks = '';
 let death: 'Eaten' | 'Buried' = 'Eaten';
+let profile: Profile = loadProfile(load(PROFILE_KEY));
+/** Altitude picked for the next run (defaults to your highest). */
+let pendingAltitude = profile.altitude;
+/** Unlock and Altitude news, shown at the top of the next card. */
+let notes: string[] = [];
+/** Profile progress made during the current descent. */
+let dogsHit = 0;
+let mushrooms = 0;
+let installPrompt: (Event & { prompt: () => Promise<void> }) | null = null;
+
+const sound = new Sound();
+sound.setMuted(load(MUTE_KEY) === '1');
 
 const renderer = new Renderer(canvas);
 const controls = new Controls(app, () => game.skier.angle, onKey);
@@ -144,8 +164,10 @@ const saveRun = () => store(SAVE_KEY, run.status === 'won' || run.status === 'lo
 
 // ---------- Flow ----------
 
-function startRun(skier: SkierId) {
-  run = startAt(pendingSeed, skier, START_MOUNTAIN, START_ROW);
+function startRun(skier: SkierId, daily: string | null = null) {
+  run = daily
+    ? newRun(pendingSeed, skier, { daily })
+    : startAt(pendingSeed, skier, START_MOUNTAIN, START_ROW, { altitude: pendingAltitude });
   game = previewGame();
   renderer.reset(game);
   setMode('map');
@@ -162,6 +184,7 @@ function toIntro() {
   renderer.reset(game);
   controls.reset();
   acc = 0;
+  dogsHit = mushrooms = 0;
   toasts.replaceChildren();
   setMode('intro');
 }
@@ -174,7 +197,23 @@ function descentOver() {
   );
   const reached = descentsDone(run);
   if (reached > loadBest()) store(BEST_KEY, String(reached));
+  const d = recordDescent(profile, { dogsHit, mushrooms });
+  const r = recordRun(d.profile, run);
+  profile = r.profile;
+  store(PROFILE_KEY, JSON.stringify(profile));
+  for (const id of [...d.unlocked, ...r.unlocked]) notes.push(`Unlocked: ${SKIERS[id].name}. Pick them at the start of your next run.`);
+  if (r.altitudeUp) {
+    notes.push(`Altitude ${profile.altitude} unlocked: faster yetis, shorter head starts, more Conditions.`);
+    pendingAltitude = profile.altitude;
+  }
+  if (notes.length) sound.play('unlock');
   setMode(run.status as Mode);
+}
+
+function startDaily() {
+  const date = todayUTC();
+  pendingSeed = dailySeed(date);
+  startRun('rookie', date);
 }
 
 /** After any choice: go wherever the run now is. */
@@ -193,7 +232,19 @@ function setMode(next: Mode) {
     lodge: showLodge, hut: showHut, event: showEvent, won: showWon, lost: showLost, playing: () => {},
   };
   show[mode]();
+  if (notes.length && mode !== 'playing') {
+    card.insertAdjacentHTML('afterbegin', notes.map((n) => `<p class="unlock">${esc(n)}</p>`).join(''));
+    notes = [];
+  }
 }
+
+function toggleMute() {
+  sound.setMuted(!sound.muted);
+  store(MUTE_KEY, sound.muted ? '1' : '0');
+  card.querySelectorAll<HTMLButtonElement>('.mute').forEach((b) => (b.textContent = muteLabel()));
+}
+const muteLabel = () => (sound.muted ? 'Sound: off' : 'Sound: on');
+const muteButton = () => `<button class="btn ghost small mute" type="button">${muteLabel()}</button>`;
 
 function pause() {
   if (mode === 'playing') setMode('paused');
@@ -211,6 +262,8 @@ function onKey(key: string) {
       pendingSeed = randomSeed();
       setMode('skier');
     }
+  } else if (key === 'm' || key === 'M') {
+    toggleMute();
   } else if (['1', '2', '3', '4'].includes(key)) {
     const i = Number(key) - 1;
     if (mode === 'playing') controls.queueSnack(i);
@@ -225,6 +278,20 @@ snackBar.addEventListener('click', (e) => {
   if (b && mode === 'playing') controls.queueSnack(Number(b.dataset.i));
 });
 document.addEventListener('visibilitychange', () => document.hidden && pause());
+// Audio may only start from a user gesture.
+document.addEventListener('pointerdown', () => sound.unlock(), { capture: true });
+document.addEventListener('keydown', () => sound.unlock(), { capture: true });
+card.addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest('button');
+  if (!b) return;
+  if (b.classList.contains('mute')) toggleMute();
+  else sound.play('click');
+});
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPrompt = e as typeof installPrompt;
+  if (mode === 'title') showTitle();
+});
 window.addEventListener('resize', () => renderer.resize());
 
 // ---------- Cards ----------
@@ -254,11 +321,28 @@ function kit(): string {
   return `<div class="kit"><span class="label">${esc(SKIERS[run.skier].name)} · Gear</span>${gear}<span class="label">Snacks</span>${snacks}${curses}</div>`;
 }
 
+const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+
+function installHtml(): string {
+  if (standalone()) return '';
+  if (installPrompt) return '<button class="btn ghost small" id="install" type="button">Install app</button>';
+  if (isIOS()) return '<p class="meta">Play full screen: Share → Add to Home Screen.</p>';
+  return '';
+}
+
+function dailyHtml(): string {
+  const date = todayUTC();
+  const d = profile.daily[date];
+  const score = d ? ` · Your best: ${d.won ? 'won' : `${d.descents}/${TOTAL_DESCENTS}`} (${d.attempts} ${d.attempts === 1 ? 'try' : 'tries'})` : '';
+  return `<span class="meta">Daily ${date}: the same mountain for everyone, as the Rookie${score}</span>`;
+}
+
 function showTitle() {
   const best = loadBest();
   const saved = deserialize(load(SAVE_KEY));
   card.innerHTML = `
-    <span class="eyebrow">M3 · prototype</span>
+    <span class="eyebrow">M4 · prototype</span>
     <h1>Whiteout</h1>
     <p>Three mountains, and a yeti on every slope. Pick your route down: Black Diamonds pay better, Lodges sell Gear, and every Summit has a boss. Cruising won't outrun the yeti. Tucking will, if you don't crash.</p>
     <dl class="controls">
@@ -271,11 +355,20 @@ function showTitle() {
     <div class="actions">
       ${saved ? '<button class="btn" id="continue">Continue</button>' : ''}
       <button class="btn${saved ? ' ghost' : ''}" id="go">New run</button>
+      <button class="btn ghost" id="daily">Daily run</button>
     </div>
-    <span class="meta">${saved ? `Saved run: ${esc(MOUNTAINS[saved.mountain].name)}, ◆ ${saved.tokens} · ` : ''}${best ? `Best: ${best} of ${TOTAL_DESCENTS} descents` : `Seed ${pendingSeed}`}</span>`;
+    ${dailyHtml()}
+    <span class="meta">${saved ? `Saved run: ${esc(MOUNTAINS[saved.mountain].name)}, ◆ ${saved.tokens} · ` : ''}${best ? `Best: ${best} of ${TOTAL_DESCENTS} descents` : `Seed ${pendingSeed}`}${profile.altitude ? ` · Altitude ${profile.altitude} unlocked` : ''}</span>
+    <div class="actions small">${muteButton()}${installHtml()}</div>`;
   on('#go', () => {
     if (saved) pendingSeed = randomSeed();
     setMode('skier');
+  });
+  on('#daily', startDaily);
+  on('#install', () => {
+    void installPrompt?.prompt();
+    installPrompt = null;
+    showTitle();
   });
   if (saved) on('#continue', () => resume(saved));
 }
@@ -284,8 +377,16 @@ function showSkier() {
   card.innerHTML = `
     <span class="eyebrow">New run · Seed ${pendingSeed}</span>
     <h2>Who's skiing?</h2>
+    ${profile.altitude ? altitudePicker() : ''}
     <div class="offers">${SKIER_IDS.map((id) => {
       const k = SKIERS[id];
+      if (!isUnlocked(profile, id)) {
+        const how = UNLOCKS.find((u) => u.skier === id)?.how ?? '';
+        return `<button class="gear locked" disabled>
+          <span class="gear-top"><b>${esc(k.name)}</b><span class="tag">Locked</span></span>
+          <span class="gear-text">${esc(how)}</span>
+        </button>`;
+      }
       return `<button class="gear" data-skier="${id}">
         <span class="gear-top"><b>${esc(k.name)}</b></span>
         <span class="gear-text">${esc(k.boon)}</span>
@@ -294,7 +395,17 @@ function showSkier() {
     }).join('')}</div>
     <div class="actions"><button class="btn ghost" id="back">Back</button></div>`;
   on('[data-skier]', (b) => startRun(b.dataset.skier as SkierId));
+  on('[data-alt]', (b) => {
+    pendingAltitude = Number(b.dataset.alt);
+    showSkier();
+  });
   on('#back', () => setMode('title'));
+}
+
+function altitudePicker(): string {
+  const levels = Array.from({ length: Math.min(MAX_ALTITUDE, profile.altitude) + 1 }, (_, i) => i);
+  return `<span class="label">Altitude · ${pendingAltitude ? 'faster yetis, shorter head starts, more Conditions' : 'the standard mountain'}</span>
+    <div class="alt-picker">${levels.map((a) => `<button class="chip-btn${a === pendingAltitude ? ' on' : ''}" data-alt="${a}" aria-pressed="${a === pendingAltitude}">${a}</button>`).join('')}</div>`;
 }
 
 const NODE_LABEL: Record<MapNode['kind'], string> = {
@@ -306,7 +417,7 @@ function nodeHtml(node: MapNode, r: number, c: number, n: number, state: 'open' 
   let icon = '';
   let sub = '';
   if (node.kind === 'slope' || node.kind === 'diamond') {
-    const p = nodeParams(run.seed, run.map, run.mountain, r, c);
+    const p = nodeParams(run.seed, run.map, run.mountain, r, c, run.altitude);
     icon = node.kind === 'diamond' ? '<span class="trail double" data-rating="black"></span>' : `<span class="trail" data-rating="${rating(p.difficulty)}"></span>`;
     sub = p.condition ? CONDITIONS[p.condition].name : `${p.length} m`;
   } else if (node.kind === 'summit') {
@@ -343,7 +454,7 @@ function showMap() {
     return `<div class="map-row${r === run.row ? ' current' : ''}" style="height:${ROW_H}px">${nodes}</div>`;
   }).join('');
   card.innerHTML = `
-    <span class="eyebrow">Mountain ${run.mountain + 1} of ${MOUNTAINS.length} · ◆ ${run.tokens} Tokens</span>
+    <span class="eyebrow">${runTag()}Mountain ${run.mountain + 1} of ${MOUNTAINS.length} · ◆ ${run.tokens} Tokens</span>
     <h2>${esc(MOUNTAINS[run.mountain].name)}</h2>
     ${run.note ? `<p class="note">${esc(run.note)}</p>` : run.row === 0 ? `<p>${esc(MOUNTAINS[run.mountain].blurb)} Pick where to go next.</p>` : '<p>Pick where to go next.</p>'}
     <div class="map" style="height:${rows.length * ROW_H}px">
@@ -354,6 +465,9 @@ function showMap() {
   on('.node.open', (b) => follow(chooseNode(run, Number(b.dataset.col))));
 }
 
+/** "Daily · " or "Altitude 3 · ", for eyebrows. */
+const runTag = () => (run.daily ? 'Daily · ' : run.altitude ? `Altitude ${run.altitude} · ` : '');
+
 function showIntro() {
   const p = paramsFor(run);
   const m = run.mountain;
@@ -362,7 +476,7 @@ function showIntro() {
   if (p.boss) {
     const boss = BOSSES[p.boss];
     card.innerHTML = `
-      <span class="eyebrow">Mountain ${m + 1} · Summit</span>
+      <span class="eyebrow">${runTag()}Mountain ${m + 1} · Summit</span>
       <h2>${esc(boss.name)}</h2>
       <p>${esc(boss.twist)}</p>
       <div class="results">
@@ -378,7 +492,7 @@ function showIntro() {
     const diamond = currentNode(run)?.kind === 'diamond';
     const r = diamond ? 'black' : rating(p.difficulty);
     card.innerHTML = `
-      <span class="eyebrow">Mountain ${m + 1} · ${esc(MOUNTAINS[m].name)}</span>
+      <span class="eyebrow">${runTag()}Mountain ${m + 1} · ${esc(MOUNTAINS[m].name)}</span>
       <h2>${diamond ? 'Black Diamond' : `Slope ${k + 1} of ${SLOPES_PER_MOUNTAIN}`}</h2>
       ${diamond ? '<p>Harder and longer, with better rewards: a guaranteed rare and 1.5× Tokens.</p>' : ''}
       ${condHtml}
@@ -403,7 +517,8 @@ function showPaused() {
     <div class="actions">
       <button class="btn" id="resume">Resume</button>
       <button class="btn ghost" id="restart">New run</button>
-    </div>`;
+    </div>
+    <div class="actions small">${muteButton()}</div>`;
   on('#resume', () => setMode('playing'));
   on('#restart', () => {
     pendingSeed = randomSeed();
@@ -521,6 +636,23 @@ function showEvent() {
   on('[data-choice]', (b) => follow(chooseEvent(run, Number(b.dataset.choice))));
 }
 
+const LOG_ICON: Record<LogEntry['kind'], string> = { slope: '▫', diamond: '◆', lodge: '⌂', hut: '♨', event: '?', summit: '▲' };
+
+function routeHtml(): string {
+  const rows = MOUNTAINS.map((mt, m) => {
+    const entries = run.log.filter((e) => e.mountain === m);
+    if (!entries.length) return '';
+    const steps = entries.map((e) => {
+      const res = run.results.find((x) => x.mountain === m && x.row === e.row);
+      const failed = res && !res.cleared;
+      const title = `${NODE_LABEL[e.kind]}${e.condition ? `, ${CONDITIONS[e.condition].name}` : ''}${failed ? ', run ended here' : ''}`;
+      return `<li class="${e.kind}${failed ? ' failed' : ''}" title="${esc(title)}" aria-label="${esc(title)}">${esc(LOG_ICON[e.kind])}</li>`;
+    }).join('');
+    return `<div class="route-row"><span>${esc(mt.name)}</span><ol>${steps}</ol></div>`;
+  }).join('');
+  return rows ? `<span class="label">Route</span><div class="route">${rows}</div>` : '';
+}
+
 function runSummary(): string {
   const t = totals(run);
   return `
@@ -529,10 +661,39 @@ function runSummary(): string {
       <div><b>${t.style.toLocaleString()}</b><span>style</span></div>
       <div><b>${formatTime(t.time)}</b><span>time</span></div>
     </div>
+    ${routeHtml()}
     ${kit()}`;
 }
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Older browsers / insecure contexts: fall back to a hidden textarea.
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.append(ta);
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch {
+      ok = false;
+    }
+    ta.remove();
+    return ok;
+  }
+}
+
 function endActions() {
+  on('#copy', async (b) => {
+    const ok = await copyText(runSummaryText(run, SKIERS[run.skier].name, run.status === 'lost' ? death : null));
+    b.textContent = ok ? 'Copied' : 'Copy failed';
+  });
   on('#again', () => {
     pendingSeed = randomSeed();
     setMode('skier');
@@ -543,6 +704,14 @@ function endActions() {
   });
 }
 
+function endMeta(): string {
+  if (run.daily) {
+    const d = profile.daily[run.daily];
+    return `Daily ${run.daily}${d ? ` · Your best today: ${d.won ? 'won' : `${d.descents}/${TOTAL_DESCENTS}`} · ${d.attempts} ${d.attempts === 1 ? 'try' : 'tries'}` : ''}`;
+  }
+  return `${run.altitude ? `Altitude ${run.altitude} · ` : ''}◆ ${run.tokens} Tokens · Seed ${run.seed}`;
+}
+
 function showWon() {
   card.innerHTML = `
     <span class="eyebrow">All three Summits</span>
@@ -551,9 +720,10 @@ function showWon() {
     ${runSummary()}
     <div class="actions">
       <button class="btn" id="again">New run</button>
-      <button class="btn ghost" id="same">Same seed</button>
+      <button class="btn ghost" id="same">${run.daily ? 'Retry Daily' : 'Same seed'}</button>
     </div>
-    <span class="meta">◆ ${run.tokens} Tokens · Seed ${run.seed}</span>`;
+    <div class="actions"><button class="btn ghost" id="copy">Copy run summary</button></div>
+    <span class="meta">${endMeta()}</span>`;
   endActions();
 }
 
@@ -570,9 +740,10 @@ function showLost() {
     ${runSummary()}
     <div class="actions">
       <button class="btn" id="again">New run</button>
-      <button class="btn ghost" id="same">Same seed</button>
+      <button class="btn ghost" id="same">${run.daily ? 'Retry Daily' : 'Same seed'}</button>
     </div>
-    <span class="meta">Seed ${run.seed}</span>`;
+    <div class="actions"><button class="btn ghost" id="copy">Copy run summary</button></div>
+    <span class="meta">${endMeta()}</span>`;
   endActions();
 }
 
@@ -590,9 +761,19 @@ function toast(text: string, warn = false) {
 const TRICK_NAMES = ['', 'Spread eagle', 'Double', 'Triple daffy'];
 const SNACK_TOAST: Record<SnackId, string> = { cocoa: 'Cocoa!', fish: 'Fish thrown', map: 'Map out', warmer: 'Warm hands' };
 
+const EVENT_SOUND: Partial<Record<GameEvent['type'], SoundName>> = {
+  crash: 'crash', bounce: 'bounce', nearMiss: 'nearMiss', jump: 'jump', ramp: 'jump', trick: 'trick', safeLanding: 'land',
+  burn: 'burn', forage: 'coin', goodBoy: 'bounce', token: 'coin', snack: 'snack', yetiSpawn: 'roar', closeCall: 'coin',
+  eaten: 'eaten', buried: 'buried', finish: 'finish', mushroom: 'secret',
+};
+
 function handle(e: GameEvent) {
+  const cue = e.type === 'land' ? (e.tricks ? 'trickLand' : 'land') : EVENT_SOUND[e.type];
+  if (cue && !(e.type === 'yetiSpawn' && game.params.condition === 'avalanche')) sound.play(cue);
+  else if (e.type === 'yetiSpawn') sound.play('buried');
   switch (e.type) {
     case 'crash':
+      if (e.kind === 'dog') dogsHit++;
       renderer.bump(10);
       navigator.vibrate?.(60);
       if (e.kind === 'botched') toast('Botched landing', true);
@@ -614,6 +795,7 @@ function handle(e: GameEvent) {
       toast('Torched it');
       break;
     case 'goodBoy':
+      dogsHit++;
       toast('Good boy!');
       break;
     case 'token':
@@ -624,6 +806,10 @@ function handle(e: GameEvent) {
       break;
     case 'moguls':
       renderer.bump(3);
+      break;
+    case 'mushroom':
+      mushrooms++;
+      toast('A mushroom? Something old stirs…');
       break;
     case 'yetiSpawn':
       if (game.params.condition === 'avalanche') toast('Avalanche!', true);
@@ -705,9 +891,16 @@ function frame(now: number) {
       if (mode !== 'playing') break;
     }
   }
+  const air = game.skier.air > 0;
+  sound.update(dt, mode === 'playing', game.skier.speed, air, mode === 'playing' ? yetiProximity(game) : 0);
   renderer.draw(game, mode === 'playing' ? dt : 0);
   updateHud();
   requestAnimationFrame(frame);
+}
+
+// Offline play once installed: only on https (or localhost) and only in the real build, which links the manifest.
+if ('serviceWorker' in navigator && document.querySelector('link[rel="manifest"]') && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 
 setMode('title');

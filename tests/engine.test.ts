@@ -10,6 +10,7 @@ import {
   step,
   style,
   yetiProximity,
+  yetiSpeedFor,
 } from '../src/engine';
 import { modsFor } from '../src/gear';
 import { SLOPE, buildSlope } from '../src/slope';
@@ -436,5 +437,29 @@ describe('conditions', () => {
     };
     expect(pass()).toBe(true);
     expect(pass('dog')).toBe(false);
+  });
+});
+
+describe('M4', () => {
+  it('the old secret: turned sideways and hiking uphill into a stump sprouts a mushroom, not a crash', () => {
+    const stump = ob('stump', 0, -1.2);
+    const g = slope([stump]);
+    const events: string[] = [];
+    for (let i = 0; i < Math.round(3 / CFG.dt); i++) {
+      step(g, { ...NO_INPUT, targetAngle: CFG.maxAngle, brake: true });
+      events.push(...g.events.map((e) => e.type));
+      g.events.length = 0;
+    }
+    expect(events).toContain('mushroom');
+    expect(events).not.toContain('crash');
+    expect(stump.hit && stump.touched).toBe(true);
+  });
+
+  it('Altitude speeds up the yeti, still under the pursuer cap', () => {
+    const base = newGame(1, { params: { length: 600, difficulty: 3, mountain: 0, yetiSpeed: 14, grace: 5 } });
+    const high = newGame(1, { params: { length: 600, difficulty: 3, mountain: 0, yetiSpeed: 14, grace: 5, yetiMult: 1.1 } });
+    expect(yetiSpeedFor(high)).toBeCloseTo(yetiSpeedFor(base) * 1.1);
+    const capped = newGame(1, { params: { length: 600, difficulty: 3, mountain: 0, yetiSpeed: 17, grace: 5, yetiMult: 1.5 } });
+    expect(yetiSpeedFor(capped)).toBeLessThanOrEqual(CFG.yeti.cap);
   });
 });

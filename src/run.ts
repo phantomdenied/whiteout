@@ -58,12 +58,20 @@ const SHOP_SNACKS = 2;
 const DIAMOND = { difficulty: 1.5, maxDifficulty: 9, length: 100, tokenMult: 1.5 };
 /** Chance of a Condition on a normal slope, per mountain. */
 const CONDITION_CHANCE = [0, 0.3, 0.5];
+/**
+ * Altitude (run-structure-and-gear.md §Meta progression): an ascension ladder unlocked by winning.
+ * Each level: pursuers 1.2% faster, 0.25 s less grace (never under the 3 s minimum), +5% chance of a Condition.
+ */
+export const MAX_ALTITUDE = 10;
+export const ALTITUDE = { yetiPerLevel: 0.008, gracePerLevel: 0.2, conditionPerLevel: 0.05 };
 
 export type OfferItem = { kind: 'gear'; id: string } | { kind: 'snack'; id: SnackId } | { kind: 'tokens'; n: number };
 
 export interface DescentResult {
   mountain: number;
   row: number;
+  kind: NodeKind;
+  condition?: Condition;
   cleared: boolean;
   distance: number;
   style: number;
@@ -82,9 +90,22 @@ export interface Shop {
 
 export type HutChoice = 'refill' | 'cleanse' | 'tune';
 
+/** One node visited, for the end-of-run summary. */
+export interface LogEntry {
+  mountain: number;
+  row: number;
+  kind: NodeKind;
+  condition?: Condition;
+  event?: string;
+}
+
 export interface RunState {
   seed: number;
   skier: SkierId;
+  altitude: number;
+  /** The Daily Seed's date (YYYY-MM-DD, UTC), or null for a normal run. */
+  daily: string | null;
+  log: LogEntry[];
   mountain: number;
   map: MountainMap;
   /** The row being chosen (status 'map') or played. */
@@ -171,10 +192,13 @@ export const currentNode = (run: RunState): MapNode | null =>
 
 // ---------- Runs ----------
 
-export function newRun(seed: number, skier: SkierId = 'rookie'): RunState {
+export function newRun(seed: number, skier: SkierId = 'rookie', opts: { altitude?: number; daily?: string | null } = {}): RunState {
   return {
     seed: seed >>> 0,
     skier,
+    altitude: Math.max(0, Math.min(MAX_ALTITUDE, Math.floor(opts.altitude ?? 0))),
+    daily: opts.daily ?? null,
+    log: [],
     mountain: 0,
     map: generateMap(seed >>> 0, 0),
     row: 0,
@@ -192,9 +216,9 @@ export function newRun(seed: number, skier: SkierId = 'rookie'): RunState {
 }
 
 /** A fresh run starting at a mountain (and optionally a row), always taking the first branch (dev: ?mountain=N&row=R). */
-export function startAt(seed: number, skier: SkierId, mountain: number, row = 0): RunState {
+export function startAt(seed: number, skier: SkierId, mountain: number, row = 0, opts: { altitude?: number; daily?: string | null } = {}): RunState {
   const m = Math.max(0, Math.min(MOUNTAINS.length - 1, Math.floor(mountain)));
-  let run: RunState = { ...newRun(seed, skier), mountain: m, map: generateMap(seed >>> 0, m) };
+  let run: RunState = { ...newRun(seed, skier, opts), mountain: m, map: generateMap(seed >>> 0, m) };
   const r = Math.max(0, Math.min(SUMMIT_ROW, Math.floor(row)));
   for (let i = 0; i < r; i++) run = { ...run, path: [...run.path, choices(run)[0]], row: i + 1 };
   return run;
@@ -243,33 +267,54 @@ export function summitParams(mountain: number): SlopeParams {
 }
 
 /** The Condition (if any) on the node at (mountain, row, col). Avalanches only from the second mountain on. */
-export function conditionAt(seed: number, mountain: number, row: number, col: number, kind: NodeKind): Condition | undefined {
+export function conditionAt(seed: number, mountain: number, row: number, col: number, kind: NodeKind, altitude = 0): Condition | undefined {
   const rng = createRng(mix(seed, 3000 + mountain * 100 + row * 10 + col));
-  if (kind !== 'diamond' && rng() >= CONDITION_CHANCE[mountain]) return undefined;
+  if (kind !== 'diamond' && rng() >= CONDITION_CHANCE[mountain] + altitude * ALTITUDE.conditionPerLevel) return undefined;
   const pool = CONDITION_IDS.filter((c) => c !== 'avalanche' || mountain > 0);
   return pool[Math.floor(rng() * pool.length)];
 }
 
-/** Parameters for any descent node (Slope, Black Diamond or Summit) at (mountain, row, col). */
-export function nodeParams(seed: number, map: MountainMap, mountain: number, row: number, col: number): SlopeParams {
+/** Parameters for any descent node (Slope, Black Diamond or Summit) at (mountain, row, col), at an Altitude. */
+export function nodeParams(seed: number, map: MountainMap, mountain: number, row: number, col: number, altitude = 0): SlopeParams {
   const kind = map.rows[row][col].kind;
-  if (kind === 'summit') return summitParams(mountain);
-  const slope = mountain * SLOPES_PER_MOUNTAIN + slopeInMountain(row);
-  const condition = conditionAt(seed, mountain, row, col, kind);
-  if (kind === 'diamond') return diamondParams(slope, condition!);
-  return condition ? { ...slopeParams(slope), condition } : slopeParams(slope);
+  let p: SlopeParams;
+  if (kind === 'summit') p = summitParams(mountain);
+  else {
+    const slope = mountain * SLOPES_PER_MOUNTAIN + slopeInMountain(row);
+    const condition = conditionAt(seed, mountain, row, col, kind, altitude);
+    p = kind === 'diamond' ? diamondParams(slope, condition!) : condition ? { ...slopeParams(slope), condition } : slopeParams(slope);
+  }
+  if (!altitude) return p;
+  return {
+    ...p,
+    yetiMult: 1 + altitude * ALTITUDE.yetiPerLevel,
+    grace: Math.max(CFG.yeti.minGrace, Math.round((p.grace - altitude * ALTITUDE.gracePerLevel) * 10) / 10),
+  };
 }
 
 /** Parameters for the descent the run is on. */
-export const paramsFor = (run: RunState) => nodeParams(run.seed, run.map, run.mountain, run.row, run.path[run.row]);
+export const paramsFor = (run: RunState) => nodeParams(run.seed, run.map, run.mountain, run.row, run.path[run.row], run.altitude);
+
+/** The Daily Seed: the same run for everyone on a given UTC date. */
+export function dailySeed(date: string): number {
+  return mix(Number(date.replace(/-/g, '')) || 0, 424242);
+}
+export const todayUTC = (now = new Date()) => now.toISOString().slice(0, 10);
 
 /** Pick the next node on the map. */
 export function chooseNode(run: RunState, col: number): RunState {
   if (run.status !== 'map' || !choices(run).includes(col)) return run;
   const path = [...run.path];
   path[run.row] = col;
-  const next = { ...run, path, note: null };
-  const kind = run.map.rows[run.row][col].kind;
+  const node = run.map.rows[run.row][col];
+  const kind = node.kind;
+  const entry: LogEntry = { mountain: run.mountain, row: run.row, kind };
+  if (kind === 'slope' || kind === 'diamond') {
+    const condition = conditionAt(run.seed, run.mountain, run.row, col, kind, run.altitude);
+    if (condition) entry.condition = condition;
+  }
+  if (node.event) entry.event = node.event;
+  const next = { ...run, path, note: null, log: [...run.log, entry] };
   if (kind === 'lodge') return enterLodge(next);
   if (kind === 'hut') return { ...next, status: 'hut' };
   if (kind === 'event') return { ...next, status: 'event' };
@@ -287,10 +332,13 @@ function advance(run: RunState): RunState {
 // ---------- Descents and rewards ----------
 
 /** Record a finished descent. `snacks` is what the skier still carries (used ones are gone). */
-export function finishDescent(run: RunState, result: Omit<DescentResult, 'mountain' | 'row'>, snacks: SnackId[] = run.snacks): RunState {
-  const diamond = currentNode(run)?.kind === 'diamond';
+export function finishDescent(run: RunState, result: Omit<DescentResult, 'mountain' | 'row' | 'kind' | 'condition'>, snacks: SnackId[] = run.snacks): RunState {
+  const node = currentNode(run);
+  const diamond = node?.kind === 'diamond';
   const earned = result.cleared ? Math.round(result.tokens * (diamond ? DIAMOND.tokenMult : 1)) : 0;
-  const full: DescentResult = { ...result, tokens: earned, mountain: run.mountain, row: run.row };
+  const full: DescentResult = { ...result, tokens: earned, mountain: run.mountain, row: run.row, kind: node?.kind ?? 'slope' };
+  const condition = paramsFor(run).condition;
+  if (condition) full.condition = condition;
   const base = { ...run, results: [...run.results, full], tokens: run.tokens + earned, snacks: [...snacks] };
   if (!result.cleared) return { ...base, status: 'lost', offer: [] };
   if (run.row === SUMMIT_ROW && run.mountain === MOUNTAINS.length - 1) return { ...base, status: 'won', offer: [] };
@@ -577,7 +625,8 @@ export function deserialize(text: string | null): RunState | null {
     if (!run.gear.every((id) => GEAR.some((g) => g.id === id))) return null;
     if (!run.curses.every((id) => CURSES.some((c) => c.id === id))) return null;
     if (!(run.skier in SKIERS)) return null;
-    return run;
+    // Saves from before Altitude and the Daily Seed: fill in the defaults.
+    return { ...run, altitude: run.altitude ?? 0, daily: run.daily ?? null, log: run.log ?? [] };
   } catch {
     return null;
   }

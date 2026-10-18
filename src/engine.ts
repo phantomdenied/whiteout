@@ -168,6 +168,8 @@ export type GameEvent =
   | { type: 'nearMiss'; style: number; dog: boolean }
   | { type: 'burn' }
   | { type: 'forage' }
+  /** The old secret: skiing backwards uphill over a stump turns it into a mushroom. */
+  | { type: 'mushroom' }
   | { type: 'goodBoy' }
   | { type: 'token'; n: number; why: string }
   | { type: 'snack'; id: SnackId }
@@ -296,7 +298,8 @@ export const tokens = (g: Game) =>
 export const airborne = (s: Skier) => s.air > 0;
 export const graceFor = (g: Game) => Math.max(CFG.yeti.minGrace, g.params.grace + g.mods.graceAdd);
 export const condition = (g: Game) => (g.params.condition ? CONDITIONS[g.params.condition] : null);
-export const speedOf = (g: Game, y: Yeti) => Math.min(CFG.yeti.cap, y.speed * g.mods.yetiSpeedMult * (condition(g)?.yetiMult ?? 1));
+export const speedOf = (g: Game, y: Yeti) =>
+  Math.min(CFG.yeti.cap, y.speed * g.mods.yetiSpeedMult * (condition(g)?.yetiMult ?? 1) * (g.params.yetiMult ?? 1));
 /** The fastest pursuer on this slope, after Gear. */
 export const yetiSpeedFor = (g: Game) => Math.max(g.wall?.max ?? 0, ...g.yetis.map((y) => speedOf(g, y)));
 
@@ -538,6 +541,12 @@ function updateSkier(g: Game, input: Input) {
         o.hit = o.passed = true;
         boost(s, 1);
         g.events.push({ type: 'goodBoy' });
+        continue;
+      }
+      if (o.kind === 'stump' && hike > 0) {
+        // Hiking backwards uphill into a stump: it sprouts a mushroom instead of tripping you.
+        o.hit = o.touched = o.passed = true;
+        g.events.push({ type: 'mushroom' });
         continue;
       }
       if (k.effect === 'crash') return crash(g, o.kind, o);

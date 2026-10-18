@@ -81,6 +81,8 @@ export interface SlopeParams {
   /** A Summit: the boss replaces the yeti. */
   boss?: BossKind;
   condition?: Condition;
+  /** Altitude: every pursuer on this slope runs this much faster (still under the cap). */
+  yetiMult?: number;
 }
 
 export interface Slope {
@@ -141,7 +143,7 @@ export function buildSlope(seed: number, params: SlopeParams, tuck: number): Slo
     // Validate against the conditions the skier will actually face: Powder slows both sides, an Avalanche
     // is modeled as a pursuer already at its top speed (generous to the avalanche).
     const c = params.condition ? CONDITIONS[params.condition] : null;
-    const chaser = c?.wall ? c.wall.max : params.yetiSpeed * (c?.yetiMult ?? 1);
+    const chaser = c?.wall ? c.wall.max : Math.min(17.5, params.yetiSpeed * (c?.yetiMult ?? 1) * (params.yetiMult ?? 1));
     if (line && chaseGap(line, tuck * (c?.speedMult ?? 1), chaser, params.grace, params.boss ? BOSS_HOLD : undefined) >= LINE.minGap) {
       return { obstacles, line, chunks, attempts: attempt + 1, fallback: false };
     }

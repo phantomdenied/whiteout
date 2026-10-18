@@ -390,6 +390,18 @@ export class Renderer {
         ctx.beginPath();
         ctx.ellipse(px, py - u * 0.4, u * 0.35, u * 0.14, 0, 0, Math.PI * 2);
         ctx.fill();
+        if (o.hit && o.touched) {
+          // Sprouted a mushroom (the old secret, or the Forager's snack).
+          ctx.fillStyle = '#f3ead8';
+          ctx.fillRect(px - u * 0.08, py - u * 0.8, u * 0.16, u * 0.4);
+          ctx.fillStyle = '#d6452b';
+          ctx.beginPath();
+          ctx.ellipse(px, py - u * 0.8, u * 0.32, u * 0.22, 0, Math.PI, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          blob(ctx, px - u * 0.13, py - u * 0.88, u * 0.06, u * 0.05);
+          blob(ctx, px + u * 0.1, py - u * 0.92, u * 0.05, u * 0.04);
+        }
         break;
       }
       case 'moguls': {

@@ -1,6 +1,6 @@
 # Run Structure & Gear — Feature Document
 
-> **Version:** v1.4 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.5 · **Status:** Draft · **Last updated:** 2026-10-18 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > Turn a great one-minute descent into a 20–30 minute run where your choices compound. Gear should change *how* you ski (P2), and routes should trade risk for reward.
@@ -87,18 +87,24 @@ These come from Events (and stay until removed at a Warming Hut or by an Event).
 | Yeti Scent | The yeti runs 4% faster (still under the cap) |
 
 ### Starting skiers
-Each skier is a starting kit with a boon and a bane, the same idea as Spindle's starting decks. In M3 all four are available from the start; the unlock conditions arrive with meta progression in M4.
+Each skier is a starting kit with a boon and a bane, the same idea as Spindle's starting decks. Since M4 only the Rookie is available at first; the others unlock as below (progress is kept on the device).
 
 | Skier | Boon | Bane | Unlock |
 |---|---|---|---|
 | **The Rookie** | Starts with Bubble Wrap | — | Default |
 | **The Snowboarder** | Landing mid-trick never crashes you | Can't snowplow | Clear Mountain 1 |
-| **The Retiree** | Starts with Rocket Boots (the secret turbo) | Crash downtime +50% | Find the mushroom secret |
-| **The Dog** | Hitbox 55% of normal; hops 20% longer | No Skis slot (Skis are never offered) | Hit 50 dogs |
+| **The Retiree** | Starts with Rocket Boots (the secret turbo) | Crash downtime +50% | Find the mushroom secret: stop, turn sideways and hike back uphill into a stump |
+| **The Dog** | Hitbox 55% of normal; hops 20% longer | No Skis slot (Skis are never offered) | Hit 50 dogs, across runs (Good Boy bumps count) |
 
 ### Meta progression
 - Unlocks add **options** (skiers, Gear in the pool, Conditions, Daily Seed), never raw power. P5: a skilled first-time player can win.
 - **Altitude:** after the first win, an ascension-style ladder of 10 difficulty tiers (faster yetis up to the pursuer cap, shorter grace down to the 3 s minimum, more Conditions).
+
+**Built in M4:**
+- **Profile** (local storage): unlocked skiers, highest Altitude, lifetime stats (runs, wins, dogs hit, mushrooms, most mountains cleared, best descents) and Daily results. Locked skiers show how to unlock them.
+- **Altitude:** winning at your highest Altitude unlocks the next, up to 10; pick any unlocked level when starting a run. Each level: yeti +0.8% (all pursuers, still capped at 17.5 m/s), head start −0.2 s (never under 3 s), Condition chance +5% on every slope (so mountain 1 gets Conditions too). Slopes are validated against the faster chaser. Simulated clean-skier bot, whole runs: 99% of descents cleared at Altitude 0, 94% at 5, 77% at 10 (`sim/altitude.ts`).
+- **Daily Seed:** one seed per UTC date, the Rookie, Altitude 0. Doesn't raise Altitude. Best result and attempts are kept per date.
+- **Run summary:** the end screen shows the route taken (one icon per node, the fatal one in red) and a *Copy run summary* button: seed or Daily date, skier, result, descents, Style, time, route, Gear and Curses as plain text, for feedback or sharing.
 
 ### Numbers (first pass)
 | Quantity | Value |
@@ -119,9 +125,9 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 | Level | Content | Status |
 |---|---|---|
 | Core | Linear 3-mountain run, reward pick of 1 in 3 from 10 Gear, Tokens | M1 prototype (Tokens banked, nothing to spend them on until the Lodge) |
-| Expected | Route map, Lodge, Snacks, 30 Gear, Summits, save between slopes | Not started |
-| Desired | Events, Curses, 4 skiers, unlocks, Daily Seed | Not started |
-| Aspirational | 10 Altitudes, run history | Not started |
+| Expected | Route map, Lodge, Snacks, 30 Gear, Summits, save between slopes | Built (M2, M3) |
+| Desired | Events, Curses, 4 skiers, unlocks, Daily Seed | Built (M3, M4) |
+| Aspirational | 10 Altitudes, run history | Altitudes built (M4); run history: only the Daily bests |
 
 ## Change Log
 | Version | Date | Change |
@@ -131,3 +137,4 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 | v1.2 | 2026-10-18 | M1: Rocket Boots, Ice Picks and Mushroom Forager reworded to what was built; the M1 Gear pool listed |
 | v1.3 | 2026-10-18 | M2: the 30 Gear, linear stage pattern, lower Lodge prices, save |
 | v1.4 | 2026-10-18 | M3: route map, Black Diamonds (+1.5 difficulty, cap 9), Warming Hut options, 8 Events, 6 Curses, 4 skiers |
+| v1.5 | 2026-10-18 | M4: profile and skier unlocks, Altitude numbers, Daily Seed, run summary |

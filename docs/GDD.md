@@ -1,6 +1,6 @@
 # Whiteout — Game Design Document (Master)
 
-> **Version:** v1.4 · **Status:** Draft · **Last updated:** 2026-10-17
+> **Version:** v1.5 · **Status:** Draft · **Last updated:** 2026-10-18
 > **Working title:** *Whiteout* (placeholder — rename freely)
 
 This is the master document. It stays short and links out to Feature Documents for the detail. If a Feature Document and this file disagree, **the Feature Document is authoritative** for its system and this file should be fixed.
@@ -157,11 +157,12 @@ Title ─▶ Skier pick ─▶ Route map ─▶ Slope ─▶ Reward pick ─▶ 
 - Light chiptune with a modern mix. The tempo of each slope's music rises as the yeti closes.
 - Readable cues: a roar on spawn, footsteps when it's within one screen, a "whoosh" for near misses, a crunch and wobble for crashes.
 - Every cue also has a visual equivalent, so the game is fully playable on mute (phones are often muted).
+- **Built in M4:** all sound is synthesized live with Web Audio (no audio files): a ski hiss that follows your speed, yeti footsteps that quicken as it closes in, a roar on spawn (a low rumble for an Avalanche), and short cues for crashes, near misses, jumps, tricks, landings, Tokens, Snacks, the finish and the secret. A Sound on/off toggle (title and pause screens, or `M`) is remembered. Music is not built yet.
 
 ## 10. Business Model
 - Premium, one-time purchase. No ads, no in-app purchases, no energy timers.
 - Free web demo: Mountain 1 only.
-- Daily Seed: the same run for everyone, with a local leaderboard and shareable result text.
+- Daily Seed: the same run for everyone, with a local leaderboard and shareable result text. **Built in M4:** one seed per UTC date, always the Rookie at Altitude 0; your best result and attempts for the day are kept, and the end screen copies a shareable summary.
 
 ## 11. Development Plan
 Same stack as Spindle: TypeScript + Vite + Vitest. The game is drawn on a 2D canvas, all in this folder, with its own `package.json`. The simulation engine is pure and deterministic (fixed timestep, seeded RNG, no DOM), so bots can play thousands of slopes for balance, as Spindle's `sim/` does.
@@ -172,7 +173,7 @@ Same stack as Spindle: TypeScript + Vite + Vitest. The game is drawn on a 2D can
 | **M1 — Slopes** (built) | Chunk library, seeded generation, finish gate, difficulty budget, 3 mountains in a straight line, reward pick of 1 in 3 (10 Gear). | A run starts, ends, and can be replayed from a seed. The simulator shows every slope is clearable without Gear. |
 | **M2 — Builds** (built; playtest pending) | Tokens, the Lodge, Snacks, 30 Gear, the Summit bosses. | Three distinct builds are viable in playtests. |
 | **M3 — Roguelike** (built; playtest pending) | Route map, Black Diamonds, Events, Conditions, 4 starting skiers. | Average run length 20–30 min; no single dominant route. |
-| **M4 — Ship** | Unlocks, Daily Seed, final art and audio, PWA, save and resume. | Ready for the store. |
+| **M4 — Ship** (built except final art; playtest pending) | Unlocks, Daily Seed, final art and audio, PWA, save and resume. Built: skier unlocks, the Altitude ladder, Daily Seed, synthesized audio, end-of-run summary with a copy button, installable PWA with offline play, save and resume. Not built: final art, music. | Ready for the store. |
 
 ## 12. Risks
 | Risk | Severity | Mitigation |
@@ -221,3 +222,4 @@ Same stack as Spindle: TypeScript + Vite + Vitest. The game is drawn on a 2D can
 | v1.2 | 2026-10-18 | M0 and M1 prototypes built |
 | v1.3 | 2026-10-18 | M2 prototype built |
 | v1.4 | 2026-10-18 | M3 prototype built |
+| v1.5 | 2026-10-18 | M4 built except art: unlocks, Altitude, Daily Seed, audio, run summary, PWA |

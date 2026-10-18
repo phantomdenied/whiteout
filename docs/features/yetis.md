@@ -65,7 +65,7 @@ Summits are 1,200 m long, one difficulty step easier than the mountain's last sl
 | Level | Content | Status |
 |---|---|---|
 | Core | Yeti spawn, chase with direction caps, leash, catch, meter | M0 prototype |
-| Expected | Edge Yetis, Top Yeti, stagger hooks, audio cues, eating animation | Stagger hooks and eating animation done; tree lines replace Edge Yetis for now; no audio yet |
+| Expected | Edge Yetis, Top Yeti, stagger hooks, audio cues, eating animation | Stagger hooks and eating animation done; tree lines replace Edge Yetis for now; audio cues (roar, footsteps that quicken as it closes) in M4 |
 | Desired | Three Summit bosses, eats-skiers interaction | Bosses: M2. Eats-skiers not started |
 | Aspirational | Yeti personalities (patterns), a yeti bestiary page | Not started |
 
@@ -75,3 +75,4 @@ Summits are 1,200 m long, one difficulty step easier than the mountain's last sl
 | v1.0 | 2026-10-17 | First draft |
 | v1.1 | 2026-10-17 | Pursuer cap (17.5 m/s), boss speeds, 3 s minimum grace incl. Summits |
 | v1.2 | 2026-10-18 | M2: bosses as built (speeds tuned by simulator), visible boss start, avalanche numbers |
+| v1.3 | 2026-10-18 | M4: audio cues; Altitude speeds pursuers up by 0.8% per level, still under the cap |
