@@ -1066,5 +1066,8 @@ if ('serviceWorker' in navigator && document.querySelector('link[rel="manifest"]
   window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 
+// ?debug exposes the live game for automated browser tests.
+if (params.has('debug')) Object.assign(window, { whiteout: () => ({ game, mode }) });
+
 setMode('attract');
 requestAnimationFrame(frame);

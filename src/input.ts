@@ -119,7 +119,8 @@ export class Controls {
     const double = e.timeStamp - this.lastTap.t < DOUBLE_TAP_MS
       && Math.hypot(e.clientX - this.lastTap.x, e.clientY - this.lastTap.y) < DOUBLE_TAP_PX;
     if (double) {
-      this.jumpQueued = true;
+      // Jump only from the ground: in the air a double tap would turn into a surprise Spread Eagle.
+      if (!this.getAirborne()) this.jumpQueued = true;
       this.lastTap.t = -Infinity;
     }
     this.touch = {
