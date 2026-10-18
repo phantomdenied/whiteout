@@ -65,8 +65,8 @@ const SNOW = [
 /** Seconds of glowing eye streak behind a yeti at night. */
 const EYE_TRAIL_S = 0.45;
 
-/** Night headlamp: cone half-angle (radians), reach and glow radius (meters). */
-const HEADLAMP = { halfAngle: 0.42, reach: 18, glow: 2.6 };
+/** Night headlamp: cone half-angle (radians), reach and glow radius (meters), and how much of the dark the long throw lifts near and far. */
+const HEADLAMP = { halfAngle: 0.42, reach: 18, glow: 2.6, throwNear: 0.42, throwFar: 0.3 };
 
 /** Burning Man: smoky, ash-dusted snow. */
 const ASH = { snow: '#efe6dc', speck: '#cdbfb2' };
@@ -623,6 +623,25 @@ export class Renderer {
       for (let i = 0; i <= 12; i++) {
         const a = dir - half + (i / 12) * half * 2;
         d.lineTo(hx + Math.sin(a) * reach, hy + Math.cos(a) * reach);
+      }
+      d.closePath();
+      d.fill();
+    }
+    // The long throw: a soft beam along the same heading that reaches past the bottom of the screen and never
+    // fades out completely, so the far slope (and what's coming) stays dimly visible.
+    const far = Math.hypot(w, h) + u * 4;
+    const throwLight = d.createRadialGradient(hx, hy, reach * 0.5, hx, hy, far);
+    throwLight.addColorStop(0, `rgba(0, 0, 0, ${HEADLAMP.throwNear})`);
+    throwLight.addColorStop(1, `rgba(0, 0, 0, ${HEADLAMP.throwFar})`);
+    d.fillStyle = throwLight;
+    for (let pass = 0; pass <= 8; pass++) {
+      const half = HEADLAMP.halfAngle * (1.05 + pass * 0.07);
+      d.globalAlpha = pass === 0 ? 1 : 0.12;
+      d.beginPath();
+      d.moveTo(hx, hy);
+      for (let i = 0; i <= 12; i++) {
+        const a = dir - half + (i / 12) * half * 2;
+        d.lineTo(hx + Math.sin(a) * far, hy + Math.cos(a) * far);
       }
       d.closePath();
       d.fill();
