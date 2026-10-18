@@ -62,6 +62,9 @@ const SNOW = [
   { snow: '#f7f9fc', speck: '#d6e2f0' },
 ];
 
+/** Seconds of glowing eye streak behind a yeti at night. */
+const EYE_TRAIL_S = 0.45;
+
 /** Night headlamp: cone half-angle (radians), reach and glow radius (meters). */
 const HEADLAMP = { halfAngle: 0.42, reach: 18, glow: 2.6 };
 
@@ -84,6 +87,8 @@ export class Renderer {
   private trail: { x: number; y: number; a: number }[] = [];
   /** Offscreen layer for the night darkness (the headlamp cone is cut out of it). */
   private dark: HTMLCanvasElement | null = null;
+  /** Night: where each yeti's eyes have been lately (world meters + game time), for the glowing streak. */
+  private eyeTrails = new Map<Yeti, { x: number; y: number; t: number }[]>();
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -116,6 +121,7 @@ export class Renderer {
     this.zoom = this.zoomFor(g);
     this.ppm = this.basePpm * this.zoom;
     this.trail = [];
+    this.eyeTrails.clear();
     this.shake = 0;
   }
 
@@ -693,13 +699,41 @@ export class Renderer {
     return still ? 0 : Math.abs(Math.sin(g.time * 10 + y.dx)) * u * 0.12;
   }
 
-  /** At night: red eyes glowing out of the dark, drawn over the darkness so you see them before the yeti. */
+  /**
+   * At night: red eyes glowing out of the dark, drawn over the darkness so you see them before the yeti,
+   * trailing a fading red streak as it runs.
+   */
   private glowingEyes(g: Game, toX: (x: number) => number, toY: (y: number) => number) {
     const { ctx, ppm: u } = this;
     const flicker = 0.85 + Math.sin(g.time * 3) * 0.15;
     for (const y of g.yetis) {
       if (y.state === 'waiting') continue;
       const S = LOOKS[y.look].size;
+      // The streak: the last EYE_TRAIL_S seconds of positions, fading and thinning toward the tail.
+      const trail = this.eyeTrails.get(y) ?? [];
+      const last = trail[trail.length - 1];
+      if (!last || last.t !== g.time) trail.push({ x: y.x, y: y.y, t: g.time });
+      while (trail.length && (g.time - trail[0].t > EYE_TRAIL_S || trail[0].t > g.time)) trail.shift();
+      this.eyeTrails.set(y, trail);
+      ctx.save();
+      ctx.lineCap = 'butt';
+      // Two passes per eye: a soft wide glow, then a thin hot core. Flat ends, so joints don't bead.
+      for (const [width, alpha] of [[0.42, 0.16], [0.12, 0.6]] as const) {
+        for (const side of [-1, 1]) {
+          for (let i = 1; i < trail.length; i++) {
+            const a = trail[i - 1];
+            const b = trail[i];
+            const k = 1 - (g.time - b.t) / EYE_TRAIL_S;
+            ctx.strokeStyle = `rgba(255, 40, 30, ${alpha * k * flicker})`;
+            ctx.lineWidth = u * width * S * (0.35 + 0.65 * k);
+            ctx.beginPath();
+            ctx.moveTo(toX(a.x) + side * u * 0.16 * S, toY(a.y) - u * 1.66 * S);
+            ctx.lineTo(toX(b.x) + side * u * 0.16 * S, toY(b.y) - u * 1.66 * S);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
       const px = toX(y.x);
       const py = toY(y.y) - this.yetiBob(g, y);
       for (const side of [-1, 1]) {
