@@ -3,9 +3,11 @@ import { BOSSES, CFG } from '../src/engine';
 import { EVENTS } from '../src/events';
 import { CURSES, GEAR, PRICE, SKIERS, SKIER_IDS, addGear, canWear, displaced, modsFor } from '../src/gear';
 import {
+  BONUS_KINDS,
   MOUNTAINS,
   ROWS,
   type RunState,
+  BURN,
   SLALOM,
   SUMMIT_ROW,
   TOTAL_DESCENTS,
@@ -80,7 +82,7 @@ describe('route map', () => {
           expect(row.length).toBeGreaterThanOrEqual(2);
           expect(row.length).toBeLessThanOrEqual(3);
           const descent = [0, 1, 3, 4].includes(r);
-          for (const n of row) expect(descent ? ['slope', 'diamond'] : ['lodge', 'hut', 'event', 'slalom']).toContain(n.kind);
+          for (const n of row) expect(descent ? ['slope', 'diamond'] : ['lodge', 'hut', 'event', 'slalom', 'burn']).toContain(n.kind);
           if (descent) expect(row.some((n) => n.kind === 'slope')).toBe(true);
           // Every node leads somewhere, and every node below is reachable.
           for (const n of row) expect(n.next.length).toBeGreaterThan(0);
@@ -103,7 +105,7 @@ describe('route map', () => {
           run = chooseNode(run, pickLast ? open[open.length - 1] : open[0]);
         }
         if (run.status === 'skiing') {
-          if (currentNode(run)?.kind !== 'slalom') descents++;
+          if (!BONUS_KINDS.includes(currentNode(run)!.kind)) descents++;
           run = pickReward(finishDescent(run, result()), null);
           if (run.status === 'won') break;
         } else run = stepRun(run);
@@ -120,12 +122,24 @@ describe('route map', () => {
     const missed = finishDescent(run, { ...result(4), gates: { made: 10, total: 12 } });
     expect(missed.status).toBe('map');
     expect(missed.row).toBe(run.row + 1);
-    expect(missed.tokens - run.tokens).toBe(4 + 10 * SLALOM.tokensPerGate);
+    expect(missed.tokens - run.tokens).toBe(10 * SLALOM.tokensPerGate);
     expect(missed.note).toContain('10 of 12');
     const perfect = finishDescent(run, { ...result(4), gates: { made: 12, total: 12 } });
     expect(perfect.status).toBe('reward');
-    expect(perfect.tokens - run.tokens).toBe(4 + 12 * SLALOM.tokensPerGate + SLALOM.perfectBonus);
+    expect(perfect.tokens - run.tokens).toBe(12 * SLALOM.tokensPerGate + SLALOM.perfectBonus);
     expect(descentsDone(perfect)).toBe(descentsDone(run));
+  });
+
+  it('Burning Man: a Token per 8 trees, a reward pick for an inferno; never ends the run or counts as a descent', () => {
+    const run = runAt('burn');
+    expect(paramsFor(run).burn).toBe(true);
+    const small = finishDescent(run, { ...result(30), burned: 41 });
+    expect(small.status).toBe('map');
+    expect(small.tokens - run.tokens).toBe(5);
+    expect(small.note).toContain('41 trees');
+    const inferno = finishDescent(run, { ...result(30), burned: BURN.pickAt[0] });
+    expect(inferno.status).toBe('reward');
+    expect(descentsDone(inferno)).toBe(descentsDone(run));
   });
 
   it('Avalanches are Black Diamond only, and pay 3× Tokens (2× on top of 1.5×) and two guaranteed rares', () => {

@@ -15,6 +15,7 @@ New in M4:
 - **Sound:** synthesized effects, a ski hiss and yeti footsteps. Toggle on the title or pause screen, or press `M`.
 - **Run summary:** the end screen shows your route and copies a text summary (handy for feedback).
 - **Slalom:** gates on some slopes (they mark a safe line and build your combo), and a no-yeti Slalom bonus stage on the map that pays per gate.
+- **Burning Man** bonus stage: you're on fire in a dense forest. Trees you touch go up in flames for points and feed your flame; rocks still crash you, and if your flame burns out the stage ends.
 - **Avalanche Black Diamonds** (optional): the wall stays 10 m behind you, nearly as fast as your tuck. Built to need speed and control upgrades; pays triple Tokens and two rares.
 - **Attract mode:** the start screen shows the bot skiing demo descents (it comes back after 45 s idle on the title).
 - **Install it:** on iPhone, Share → Add to Home Screen; on Android, the *Install app* button. Works offline once installed.

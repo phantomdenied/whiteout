@@ -42,8 +42,13 @@ export const CFG = {
   nearMissGap: 0.5,
   nearMissMinSpeed: 8,
   nearMissStyle: 25,
+  /**
+   * Burning Man: your flame (`fuel`, 0–1) drains; each tree you light refuels it and scores Style (dead trees,
+   * being dry, count double). Trees within `radius` of you catch. Run out and the stage ends.
+   */
+  burn: { drain: 0.1, perTree: 0.07, radius: 1.8, style: 20, deadMult: 2 },
   /** Style for each slalom gate made (combo-multiplied; each gate also builds the combo). */
-  gateStyle: 30,
+  gateStyle: 15,
   /** Combo multiplier = min(maxMult, 1 + chain × multPerChain). Only trick and near-miss Style is multiplied. */
   multPerChain: 0.5,
   maxMult: 4,
@@ -179,6 +184,8 @@ export type GameEvent =
   | { type: 'mushroom' }
   | { type: 'goodBoy' }
   | { type: 'gate'; made: boolean; style: number }
+  | { type: 'ignite'; dead: boolean; style: number; n: number }
+  | { type: 'burnout' }
   | { type: 'token'; n: number; why: string }
   | { type: 'snack'; id: SnackId }
   | { type: 'yetiSpawn' }
@@ -207,6 +214,9 @@ export interface Game {
   /** Slalom gates, sorted by y. */
   gates: Gate[];
   gatesMade: number;
+  /** Burning Man: flame left (0–1) and trees set alight. */
+  fuel: number;
+  burned: number;
   /** Snacks carried into this slope; used ones are removed. */
   snacks: SnackId[];
   /** Trail Map: the clean line is drawn down to this y. */
@@ -282,7 +292,7 @@ export function newGame(seed: number, opts: GameOptions = {}): Game {
   const cond = params.condition ? CONDITIONS[params.condition] : null;
   const yetis = boss
     ? boss.yetis.map((b) => makeYeti(b.look, b.speed, b.cross, b.dx, 'holding'))
-    : cond?.wall || params.gates === 'course' ? [] : [makeYeti('yeti', params.yetiSpeed, CFG.yeti.cross, 0, 'waiting')];
+    : cond?.wall || params.gates === 'course' || params.burn ? [] : [makeYeti('yeti', params.yetiSpeed, CFG.yeti.cross, 0, 'waiting')];
   const wall: Wall | null = boss?.wall
     ? { armed: true, y: CFG.yeti.wallHold, v: 0, ...boss.wall }
     : cond?.wall ? { armed: false, y: -Infinity, v: 0, ...cond.wall } : null;
@@ -304,6 +314,8 @@ export function newGame(seed: number, opts: GameOptions = {}): Game {
     line: slope.line,
     gates: placeGates(slope.line, params.gates, params.length),
     gatesMade: 0,
+    fuel: params.burn ? 1 : 0,
+    burned: 0,
     snacks: [...(opts.snacks ?? [])],
     mapUntil: -Infinity,
     warm: false,
@@ -374,6 +386,8 @@ export function step(g: Game, input: Input): void {
   updateSkier(g, input);
   if (g.over) return;
   updateGates(g);
+  if (g.params.burn) updateBurn(g);
+  if (g.over) return;
   for (const y of g.yetis) {
     updateYeti(g, y);
     if (g.over || g.result) break;
@@ -558,6 +572,11 @@ function updateSkier(g: Game, input: Input) {
     const dy = o.y - s.y;
     const skierR = CFG.skierR * m.hitboxMult;
     if (Math.hypot(dx, dy) < k.r + skierR) {
+      // On fire (Burning Man): trees go up in flames instead of stopping you.
+      if (g.fuel > 0 && burnable(o)) {
+        ignite(g, o);
+        continue;
+      }
       if (airborne(s) && (k.jumpable || s.airKind === 'ramp')) {
         // Jumped over it: Gear hooks.
         if (o.touched) continue;
@@ -704,6 +723,40 @@ function startTrick(g: Game, kind: TrickKind) {
   s.trickKinds = [...s.trickKinds, kind];
   s.trickT = TRICKS[kind].time;
   g.events.push({ type: 'trick', n: s.tricks, kind });
+}
+
+/** Burning Man: light trees near you, burn fuel, and end the stage when the flame dies. */
+function updateBurn(g: Game) {
+  const s = g.skier;
+  if (g.fuel <= 0) return;
+  const B = CFG.burn;
+  const obs = g.obstacles;
+  for (let i = firstAtOrBelow(obs, s.y - B.radius); i < obs.length && obs[i].y <= s.y + B.radius; i++) {
+    const o = obs[i];
+    if (o.hit || !burnable(o)) continue;
+    if (Math.hypot(o.x - s.x, o.y - s.y) < B.radius) ignite(g, o);
+  }
+  g.fuel = Math.max(0, Math.min(1, g.fuel - B.drain * CFG.dt));
+  if (g.fuel <= 0) {
+    g.result = 'cleared';
+    g.over = true;
+    g.events.push({ type: 'burnout' }, { type: 'over' });
+  }
+}
+
+/** Trees on the slope burn; the edge tree line is a wall (no farming it by hugging the edge). */
+const burnable = (o: Obstacle) => (o.kind === 'tree' || o.kind === 'deadtree') && Math.abs(o.x) < SLOPE.edgeLine - 0.25;
+
+function ignite(g: Game, o: Obstacle) {
+  const B = CFG.burn;
+  const dead = o.kind === 'deadtree';
+  o.burning = o.hit = o.touched = o.passed = true;
+  const pts = B.style * (dead ? B.deadMult : 1) * multiplier(g);
+  g.skillStyle += pts;
+  g.chain++;
+  g.burned++;
+  g.fuel = Math.min(1, g.fuel + B.perTree * (dead ? B.deadMult : 1));
+  g.events.push({ type: 'ignite', dead, style: pts, n: g.burned });
 }
 
 /** Slalom: crossing a gate's line between its poles (and on your feet) makes it. */

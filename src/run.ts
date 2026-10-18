@@ -28,7 +28,9 @@ export const MOUNTAINS: { name: string; blurb: string; boss: BossKind }[] = [
   { name: 'The Spine', blurb: 'The last bus leaves from the bottom.', boss: 'old' },
 ];
 
-export type NodeKind = 'slope' | 'diamond' | 'lodge' | 'hut' | 'event' | 'slalom' | 'summit';
+export type NodeKind = 'slope' | 'diamond' | 'lodge' | 'hut' | 'event' | 'slalom' | 'burn' | 'summit';
+/** Bonus stages: no pursuer, can't end the run, don't count toward the 15 descents. */
+export const BONUS_KINDS: NodeKind[] = ['slalom', 'burn'];
 export interface MapNode {
   kind: NodeKind;
   /** Indices of the nodes in the next row this one leads to. */
@@ -62,8 +64,14 @@ const withCondition = (p: SlopeParams, condition: Condition | undefined): SlopeP
   !condition ? p
     : condition === 'avalanche' ? { ...p, condition, difficulty: Math.max(AVALANCHE.minDifficulty, p.difficulty + AVALANCHE.difficulty) }
       : { ...p, condition };
-/** Slalom: gates on some plain slopes, and the bonus stage (no pursuer; Tokens per gate, a reward pick for a perfect run). */
-export const SLALOM = { sectionChance: 0.35, tokensPerGate: 1, perfectBonus: 8 };
+/**
+ * Bonus stages pay their own way, not in Style Tokens (their combo-multiplied Style would pay several Black
+ * Diamonds' worth); a great run is worth about two Black Diamonds, plus a reward pick for an excellent one.
+ * Slalom: gates on some plain slopes; the bonus stage pays per gate, and a pick for a perfect run.
+ */
+export const SLALOM = { sectionChance: 0.35, tokensPerGate: 0.5, perfectBonus: 6 };
+/** Burning Man: a Token per `treesPerToken` trees burned, and a reward pick for an inferno (`pickAt`, by mountain). */
+export const BURN = { treesPerToken: 8, pickAt: [80, 100, 120] };
 /** Chance of a Condition on a normal slope, per mountain. */
 const CONDITION_CHANCE = [0, 0.3, 0.5];
 /**
@@ -87,6 +95,8 @@ export interface DescentResult {
   time: number;
   /** Slalom gates made, if the descent had any. */
   gates?: { made: number; total: number };
+  /** Trees set alight (Burning Man). */
+  burned?: number;
 }
 
 export interface Shop {
@@ -154,7 +164,7 @@ export function generateMap(seed: number, mountain: number): MountainMap {
     } else {
       // The first stop row always has a Lodge, the second always a Warming Hut.
       const fixed: NodeKind = r === 2 ? 'lodge' : 'hut';
-      const others: NodeKind[] = r === 2 ? ['hut', 'event', 'event', 'slalom'] : ['lodge', 'event', 'event', 'slalom'];
+      const others: NodeKind[] = r === 2 ? ['hut', 'event', 'event', 'slalom', 'burn'] : ['lodge', 'event', 'event', 'slalom', 'burn'];
       kinds = [fixed, ...Array.from({ length: n - 1 }, () => pick(others))];
       for (let i = kinds.length - 1; i > 0; i--) {
         const j = Math.floor(rng() * (i + 1));
@@ -236,8 +246,8 @@ export function startAt(seed: number, skier: SkierId, mountain: number, row = 0,
 
 export const runMods = (run: RunState) => modsFor(run.gear, run.curses, run.skier);
 export const snackSlots = (run: RunState) => runMods(run).snackSlots;
-/** Descents cleared (the Slalom bonus stage doesn't count toward the 15). */
-export const descentsDone = (run: RunState) => run.results.filter((r) => r.cleared && r.kind !== 'slalom').length;
+/** Descents cleared (bonus stages don't count toward the 15). */
+export const descentsDone = (run: RunState) => run.results.filter((r) => r.cleared && !BONUS_KINDS.includes(r.kind)).length;
 export const nodeSeed = (run: RunState) => mix(run.seed, 1000 + run.mountain * 100 + run.row * 10 + (run.path[run.row] ?? 0));
 
 /** Which slope of its mountain (0-based) a descent row is. */
@@ -282,6 +292,11 @@ export function slalomParams(mountain: number): SlopeParams {
   return { length: 450 + mountain * 75, difficulty: 2 + mountain * 0.5, mountain, yetiSpeed: 0, grace: 99, gates: 'course' };
 }
 
+/** The Burning Man bonus stage: you're on fire in the densest forest on the mountain. */
+export function burnParams(mountain: number): SlopeParams {
+  return { length: 500 + mountain * 100, difficulty: Math.min(10, 8 + mountain), mountain, yetiSpeed: 0, grace: 99, burn: true };
+}
+
 /** The Condition (if any) on the node at (mountain, row, col). Avalanches only on Black Diamonds, from the second mountain on. */
 export function conditionAt(seed: number, mountain: number, row: number, col: number, kind: NodeKind, altitude = 0): Condition | undefined {
   const rng = createRng(mix(seed, 3000 + mountain * 100 + row * 10 + col));
@@ -295,6 +310,7 @@ export function conditionAt(seed: number, mountain: number, row: number, col: nu
 export function nodeParams(seed: number, map: MountainMap, mountain: number, row: number, col: number, altitude = 0): SlopeParams {
   const kind = map.rows[row][col].kind;
   if (kind === 'slalom') return slalomParams(mountain);
+  if (kind === 'burn') return burnParams(mountain);
   let p: SlopeParams;
   if (kind === 'summit') p = summitParams(mountain);
   else {
@@ -362,13 +378,21 @@ export function finishDescent(run: RunState, result: Omit<DescentResult, 'mounta
   let earned = result.cleared ? Math.round(result.tokens * mult) : 0;
   const slalom = node?.kind === 'slalom';
   const perfect = slalom && !!result.gates && result.gates.made === result.gates.total;
-  if (slalom && result.gates) earned += result.gates.made * SLALOM.tokensPerGate + (perfect ? SLALOM.perfectBonus : 0);
+  if (slalom) earned = Math.floor((result.gates?.made ?? 0) * SLALOM.tokensPerGate) + (perfect ? SLALOM.perfectBonus : 0);
+  const burn = node?.kind === 'burn';
+  const burned = result.burned ?? 0;
+  const pickAt = BURN.pickAt[run.mountain] ?? BURN.pickAt[BURN.pickAt.length - 1];
+  const inferno = burn && burned >= pickAt;
+  if (burn) earned = Math.floor(burned / BURN.treesPerToken);
   const full: DescentResult = { ...result, tokens: earned, mountain: run.mountain, row: run.row, kind: node?.kind ?? 'slope' };
   if (condition) full.condition = condition;
   const base = { ...run, results: [...run.results, full], tokens: run.tokens + earned, snacks: [...snacks] };
   // The Slalom has no pursuer, so it can't be lost; a perfect run earns a reward pick.
   if (slalom && !perfect) {
     return advance({ ...base, note: `Slalom: ${result.gates?.made ?? 0} of ${result.gates?.total ?? 0} gates, +${earned} Tokens.` });
+  }
+  if (burn && !inferno) {
+    return advance({ ...base, note: `Burning Man: ${burned} trees burned, +${earned} Tokens. Burn ${pickAt} for a reward pick.` });
   }
   if (!result.cleared) return { ...base, status: 'lost', offer: [] };
   if (run.row === SUMMIT_ROW && run.mountain === MOUNTAINS.length - 1) return { ...base, status: 'won', offer: [] };

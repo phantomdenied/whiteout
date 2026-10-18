@@ -15,7 +15,7 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 - **Tuck:** about +50% top speed, but the heading changes one step slower. Tucking is how you outrun the yeti.
 - **Slow down:** drag up to snowplow: −50% speed. A sideways heading stops you quickly.
 - **Jump:** double-tap. You're airborne for about 0.6 s (longer off ramps), passing over low obstacles (stumps, rocks, small dogs, moguls). Trees still hit you unless the jump is from a ramp.
-- **Slalom gates:** pairs of flags, 3.6 m apart, centered on the generator's clean line (so the gates show a safe way down). Passing between them on your feet scores 30 Style × the combo and adds 1 to the combo; missing one scores nothing. 35% of plain slopes (no Avalanche, not Black Diamonds) have a slalom section in their middle third, a gate every 22 m.
+- **Slalom gates:** pairs of flags, 3.6 m apart, centered on the generator's clean line (so the gates show a safe way down). Passing between them on your feet scores 15 Style × the combo and adds 1 to the combo; missing one scores nothing. 35% of plain slopes (no Avalanche, not Black Diamonds) have a slalom section in their middle third, a gate every 22 m.
 - **Tricks:** while tucked (thumb held low), swipe up, left or right: you pop into the air and straight into the trick, no jump needed. Swipe again in the air to chain, up to 3 per jump. A clean landing scores Style; landing mid-trick is a crash. Upright on the ground, a fast sideways drag is just steering. A swipe must be deliberate: at least 18% of the screen width (60 px minimum) within 0.1 s, twice as far along its direction as across it, with a 0.22 s cooldown, so steering corrections never count as tricks.
 
 | Swipe | Trick | Pose time | Style |

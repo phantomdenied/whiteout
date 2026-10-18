@@ -104,7 +104,7 @@ export function recordRun(p: Profile, run: RunState): { profile: Profile; unlock
   return { profile, unlocked, altitudeUp };
 }
 
-const KIND_GLYPH: Record<string, string> = { slope: '▫', diamond: '◆', lodge: '⌂', hut: '♨', event: '?', slalom: '⚑', summit: '▲' };
+const KIND_GLYPH: Record<string, string> = { slope: '▫', diamond: '◆', lodge: '⌂', hut: '♨', event: '?', slalom: '⚑', burn: '🔥', summit: '▲' };
 
 /** Plain-text summary of a run, for pasting into feedback or sharing a Daily result. */
 export function runSummaryText(run: RunState, skierName: string, how: string | null): string {

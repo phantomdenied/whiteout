@@ -558,3 +558,33 @@ describe('slalom and the avalanche', () => {
     expect(g.events.some((e) => e.type === 'buried')).toBe(true);
   });
 });
+
+describe('Burning Man', () => {
+  const params = { length: 2000, difficulty: 1, mountain: 0, yetiSpeed: 0, grace: 99, burn: true };
+
+  it('trees you touch or pass close to catch fire instead of crashing you, and feed your flame', () => {
+    const g = newGame(1, { params, obstacles: [ob('tree', 0, 25), ob('deadtree', 1.2, 40), ob('tree', 6, 50)] });
+    expect(g.yetis).toHaveLength(0);
+    run(g, 4, tuck);
+    expect(g.burned).toBe(2);
+    expect(g.skier.state).toBe('ski');
+    expect(g.obstacles[2].burning).toBe(false);
+    expect(g.events.filter((e) => e.type === 'crash')).toHaveLength(0);
+    expect(g.fuel).toBeGreaterThan(1 - CFG.burn.drain * 4);
+  });
+
+  it('rocks and the edge tree line still crash you; the stage ends when the flame burns out', () => {
+    const g = newGame(1, { params, obstacles: [ob('rock', 0, 25)] });
+    run(g, 3, tuck);
+    expect(g.events.some((e) => e.type === 'crash')).toBe(true);
+    expect(g.burned).toBe(0);
+    const edge = newGame(1, { params, obstacles: [ob('tree', SLOPE.edgeLine, 5)] });
+    edge.skier.x = SLOPE.edgeLine - 0.3;
+    run(edge, 1);
+    expect(edge.burned).toBe(0);
+    const out = newGame(1, { params, obstacles: [] });
+    run(out, 1 / CFG.burn.drain + 1, tuck);
+    expect(out.over).toBe(true);
+    expect(out.result).toBe('cleared');
+  });
+});

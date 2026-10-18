@@ -34,6 +34,7 @@ import {
   type OfferItem,
   type RunState,
   SLOPES_PER_MOUNTAIN,
+  BURN,
   SLALOM,
   SUMMIT_ROW,
   TOTAL_DESCENTS,
@@ -69,6 +70,7 @@ import {
   slopeParams,
   snackSlots,
   startAt,
+  burnParams,
   summitParams,
   todayUTC,
   totals,
@@ -155,7 +157,9 @@ function attractGame(): Game {
   const n = attractNo++;
   attractSloppy = Math.random() < 0.5;
   const slope = (n * 7) % TOTAL_SLOPES;
-  const params = n % 5 === 4
+  const params = n % 7 === 6
+    ? burnParams(n % MOUNTAINS.length)
+    : n % 5 === 4
     ? summitParams(n % MOUNTAINS.length)
     : n % 5 === 2
       ? diamondParams(slope, CONDITION_IDS[n % CONDITION_IDS.length])
@@ -169,8 +173,17 @@ function attractGame(): Game {
  */
 let greedy = false;
 function attractInput(g: Game) {
-  const input = botInput(g, attractSloppy ? { lapses: 0.0007 } : {});
   const s = g.skier;
+  if (g.params.burn) {
+    // Burning Man demo: steer for the nearest tree ahead (not the edge wall) and torch it.
+    let best: { x: number; y: number } | null = null;
+    for (const o of g.obstacles) {
+      if (o.y < s.y + 2 || o.y > s.y + 10 || o.hit || Math.abs(o.x) > 26 || (o.kind !== 'tree' && o.kind !== 'deadtree')) continue;
+      if (!best || Math.abs(o.x - s.x) < Math.abs(best.x - s.x)) best = o;
+    }
+    if (best) return { turn: 0, targetAngle: Math.atan2(best.x - s.x, best.y - s.y), tuck: true, brake: false, jump: false };
+  }
+  const input = botInput(g, attractSloppy ? { lapses: 0.0007 } : {});
   if (s.state !== 'ski') return input;
   const anyTrick = () => (1 + Math.floor(Math.random() * 3)) as 1 | 2 | 3;
   // The clean skier pops one trick from a tuck on a straight; the greedy one keeps chaining in the air.
@@ -241,6 +254,7 @@ function descentOver() {
     {
       cleared: game.result === 'cleared', distance: distance(game), style: style(game), tokens: tokens(game), time: game.time,
       ...(game.gates.length ? { gates: { made: game.gatesMade, total: game.gates.length } } : {}),
+      ...(game.params.burn ? { burned: game.burned } : {}),
     },
     game.snacks,
   );
@@ -486,7 +500,7 @@ function altitudePicker(): string {
 }
 
 const NODE_LABEL: Record<MapNode['kind'], string> = {
-  slope: 'Slope', diamond: 'Black Diamond', lodge: 'Lodge', hut: 'Warming Hut', event: 'Event', slalom: 'Slalom', summit: 'Summit',
+  slope: 'Slope', diamond: 'Black Diamond', lodge: 'Lodge', hut: 'Warming Hut', event: 'Event', slalom: 'Slalom', burn: 'Burning Man', summit: 'Summit',
 };
 
 function nodeHtml(node: MapNode, r: number, c: number, n: number, state: 'open' | 'taken' | 'past' | 'locked'): string {
@@ -499,6 +513,9 @@ function nodeHtml(node: MapNode, r: number, c: number, n: number, state: 'open' 
     sub = p.condition ? CONDITIONS[p.condition].name : p.gates ? 'Gates' : `${p.length} m`;
   } else if (node.kind === 'slalom') {
     icon = '<span class="node-icon">⚑</span>';
+    sub = 'Bonus';
+  } else if (node.kind === 'burn') {
+    icon = '<span class="node-icon">🔥</span>';
     sub = 'Bonus';
   } else if (node.kind === 'summit') {
     icon = '<span class="node-icon">▲</span>';
@@ -553,11 +570,24 @@ function showIntro() {
   const m = run.mountain;
   const cond = p.condition ? CONDITIONS[p.condition] : null;
   const condHtml = cond ? `<p class="condition"><b>${esc(cond.name)}.</b> ${esc(cond.text)}</p>` : '';
-  if (p.gates === 'course') {
+  if (p.burn) {
+    card.innerHTML = `
+      <span class="eyebrow">${runTag()}Mountain ${m + 1} · Bonus stage</span>
+      <h2>Burning Man</h2>
+      <p>You're on fire, and the forest is dense. Trees you touch or pass close to go up in flames instead of stopping you: each one scores Style, builds your combo and feeds your flame (dead trees double). Rocks and dogs still crash you. Your flame burns down; keep lighting trees or you burn out.</p>
+      <div class="results">
+        <div><b>1 ◆</b><span>per ${BURN.treesPerToken} trees</span></div>
+        <div><b>${BURN.pickAt[m]}</b><span>trees: a reward pick</span></div>
+        <div><b>${p.length}</b><span>meters</span></div>
+      </div>
+      ${kit()}
+      <div class="actions"><button class="btn" id="drop">Light up</button></div>
+      <span class="meta">◆ ${run.tokens} Tokens · Seed ${run.seed}</span>`;
+  } else if (p.gates === 'course') {
     card.innerHTML = `
       <span class="eyebrow">${runTag()}Mountain ${m + 1} · Bonus stage</span>
       <h2>Slalom</h2>
-      <p>No yeti. Ski between the flags: every gate scores Style and builds your combo, and pays ${SLALOM.tokensPerGate} Token at the end. Make them all for +${SLALOM.perfectBonus} Tokens and a reward pick.</p>
+      <p>No yeti. Ski between the flags: every gate scores Style and builds your combo; every two gates pay a Token at the end. Make them all for +${SLALOM.perfectBonus} Tokens and a reward pick.</p>
       <div class="results">
         <div><b>${game.gates.length}</b><span>gates</span></div>
         <div><b>${p.length}</b><span>meters</span></div>
@@ -647,7 +677,7 @@ function showReward() {
   const node = currentNode(run);
   const summit = node?.kind === 'summit';
   card.innerHTML = `
-    <span class="eyebrow">${summit ? `${esc(BOSSES[MOUNTAINS[run.mountain].boss].name)} beaten` : node?.kind === 'slalom' ? 'Perfect slalom · every gate' : `${node?.kind === 'diamond' ? 'Black Diamond' : 'Slope'} cleared · ${descentsDone(run)} of ${TOTAL_DESCENTS}`}</span>
+    <span class="eyebrow">${summit ? `${esc(BOSSES[MOUNTAINS[run.mountain].boss].name)} beaten` : node?.kind === 'slalom' ? 'Perfect slalom · every gate' : node?.kind === 'burn' ? `Inferno · ${res.burned ?? 0} trees` : `${node?.kind === 'diamond' ? 'Black Diamond' : 'Slope'} cleared · ${descentsDone(run)} of ${TOTAL_DESCENTS}`}</span>
     <h2>Pick a reward</h2>
     <div class="results">
       <div><b>${res.style.toLocaleString()}</b><span>style</span></div>
@@ -730,7 +760,7 @@ function showEvent() {
   on('[data-choice]', (b) => follow(chooseEvent(run, Number(b.dataset.choice))));
 }
 
-const LOG_ICON: Record<LogEntry['kind'], string> = { slope: '▫', diamond: '◆', lodge: '⌂', hut: '♨', event: '?', slalom: '⚑', summit: '▲' };
+const LOG_ICON: Record<LogEntry['kind'], string> = { slope: '▫', diamond: '◆', lodge: '⌂', hut: '♨', event: '?', slalom: '⚑', burn: '🔥', summit: '▲' };
 
 function routeHtml(): string {
   const rows = MOUNTAINS.map((mt, m) => {
@@ -856,7 +886,7 @@ const SNACK_TOAST: Record<SnackId, string> = { cocoa: 'Cocoa!', fish: 'Fish thro
 
 const EVENT_SOUND: Partial<Record<GameEvent['type'], SoundName>> = {
   crash: 'crash', bounce: 'bounce', nearMiss: 'nearMiss', jump: 'jump', ramp: 'jump', trick: 'trick', safeLanding: 'land',
-  burn: 'burn', forage: 'coin', gate: 'gate', goodBoy: 'bounce', token: 'coin', snack: 'snack', yetiSpawn: 'roar', closeCall: 'coin',
+  burn: 'burn', forage: 'coin', gate: 'gate', ignite: 'ignite', burnout: 'land', goodBoy: 'bounce', token: 'coin', snack: 'snack', yetiSpawn: 'roar', closeCall: 'coin',
   eaten: 'eaten', buried: 'buried', finish: 'finish', mushroom: 'secret',
 };
 
@@ -886,6 +916,12 @@ function handle(e: GameEvent) {
       break;
     case 'burn':
       toast('Torched it');
+      break;
+    case 'ignite':
+      if (e.n % 10 === 0) toast(`🔥 ${e.n} trees`);
+      break;
+    case 'burnout':
+      toast('Burned out', true);
       break;
     case 'gate':
       if (e.made) toast(`Gate ${game.gatesMade}/${game.gates.length} +${Math.round(e.style)}`);
@@ -969,7 +1005,7 @@ function updateHud() {
   setText(hud.dist, distance(game).toLocaleString());
   setText(hud.length, `/${game.params.length} m`);
   setText(hud.speed, String(Math.round(game.skier.speed)));
-  setText(hud.slope, run.row === SUMMIT_ROW ? `${run.mountain + 1}-S` : game.params.gates === 'course' ? '⚑' : `${run.mountain + 1}-${slopeInMountain(run.row) + 1}`);
+  setText(hud.slope, run.row === SUMMIT_ROW ? `${run.mountain + 1}-S` : game.params.gates === 'course' ? '⚑' : game.params.burn ? '🔥' : `${run.mountain + 1}-${slopeInMountain(run.row) + 1}`);
   setText(hud.style, style(game).toLocaleString());
   const mult = multiplier(game);
   setText(hud.mult, mult > 1 ? `×${mult % 1 ? mult.toFixed(1) : mult}` : '');
@@ -984,6 +1020,14 @@ function updateHud() {
   if (meter.getAttribute('aria-valuenow') !== String(pct)) meter.setAttribute('aria-valuenow', String(pct));
   if (game.params.gates === 'course') {
     setText(meterLabel, `Gates ${game.gatesMade}/${game.gates.length}`);
+    updateSnackBar();
+    return;
+  }
+  if (game.params.burn) {
+    // The meter is your flame: it drains, and burning trees refills it.
+    setStyle(meterFill, 'width', `${Math.round(game.fuel * 100)}%`);
+    if (meterFill.classList.contains('close') !== game.fuel < 0.3) meterFill.classList.toggle('close', game.fuel < 0.3);
+    setText(meterLabel, `🔥 ${game.burned} trees${game.fuel < 0.3 ? ' · flame low' : ''}`);
     updateSnackBar();
     return;
   }

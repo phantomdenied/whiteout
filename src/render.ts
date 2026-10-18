@@ -62,6 +62,9 @@ const SNOW = [
   { snow: '#f7f9fc', speck: '#d6e2f0' },
 ];
 
+/** Burning Man: smoky, ash-dusted snow. */
+const ASH = { snow: '#efe6dc', speck: '#cdbfb2' };
+
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private w = 0;
@@ -142,7 +145,7 @@ export class Renderer {
     const toY = (y: number) => (y - camY) * ppm + sy;
 
     const cond = g.params.condition;
-    const tone = cond === 'ice' ? ICE : cond === 'powder' ? POWDER : SNOW[g.params.mountain] ?? SNOW[0];
+    const tone = g.params.burn ? ASH : cond === 'ice' ? ICE : cond === 'powder' ? POWDER : SNOW[g.params.mountain] ?? SNOW[0];
     ctx.fillStyle = tone.snow;
     ctx.fillRect(0, 0, w, h);
 
@@ -396,7 +399,8 @@ export class Renderer {
         ctx.lineTo(px, py - u * 2.75);
         ctx.closePath();
         ctx.fill();
-        if (o.hit) this.stars(px, py - u * 2.9, time);
+        if (o.burning) this.fire(px, py - u * 1.4, u * 1.3, time, o.phase);
+        else if (o.hit) this.stars(px, py - u * 2.9, time);
         break;
       }
       case 'rock': {
@@ -546,6 +550,8 @@ export class Renderer {
     this.skiPair(u, 1, kind === 1);
     ctx.restore();
     this.body(u, s.tuck, s.angle);
+    // Burning Man: the skier is a torch, bigger while the flame is full.
+    if (g.fuel > 0) this.fire(0, -u * 0.6, u * (0.9 + g.fuel * 1.1), g.time, 0);
     ctx.restore();
   }
 
@@ -569,6 +575,17 @@ export class Renderer {
       ctx.closePath();
       ctx.fill();
     }
+  }
+
+  /** A flickering flame: an outer orange blob and a yellow core, sized `size` (pixels) and centered at its base. */
+  private fire(px: number, py: number, size: number, time: number, phase: number) {
+    const { ctx } = this;
+    const f = 0.85 + Math.sin(time * 18 + phase) * 0.15;
+    const sway = Math.sin(time * 7 + phase) * size * 0.08;
+    ctx.fillStyle = C.flame;
+    blob(ctx, px + sway, py - size * 0.35, size * 0.42 * f, size * 0.75 * f);
+    ctx.fillStyle = C.flameCore;
+    blob(ctx, px + sway * 0.5, py - size * 0.15, size * 0.22 * f, size * 0.42 * f);
   }
 
   private skiPair(u: number, scale: number, scattered: boolean) {

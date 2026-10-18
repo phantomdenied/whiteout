@@ -86,6 +86,8 @@ export interface SlopeParams {
   condition?: Condition;
   /** Slalom gates along the clean line: a section mid-slope, or a whole course (the Slalom bonus stage, no pursuer). */
   gates?: 'section' | 'course';
+  /** The Burning Man bonus stage: you're on fire in a dense forest, and trees you touch burn instead of crashing you. */
+  burn?: boolean;
   /** Altitude: every pursuer on this slope runs this much faster (still under the cap). */
   yetiMult?: number;
 }
@@ -152,6 +154,8 @@ export function buildSlope(seed: number, params: SlopeParams, tuck: number): Slo
     const c = params.condition ? CONDITIONS[params.condition] : null;
     const chaser = c?.wall ? c.wall.max : Math.min(17.5, params.yetiSpeed * (c?.yetiMult ?? 1) * (params.yetiMult ?? 1));
     const leash = c?.wall?.leash;
+    // Bonus stages have no pursuer; the Burning Man doesn't even need a line (you ski through trees).
+    if (params.burn) return { obstacles, line, chunks, attempts: attempt + 1, fallback: false };
     const ok = params.gates === 'course'
       ? line !== null
       : line && chaseGap(line, tuck * (c?.speedMult ?? 1), chaser, params.grace, params.boss ? BOSS_HOLD : undefined, leash) >= (leash ? LINE.minGapLeashed : LINE.minGap);

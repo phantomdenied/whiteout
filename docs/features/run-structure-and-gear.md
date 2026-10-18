@@ -8,7 +8,9 @@
 ## Core Mechanics
 
 ### Run shape
-**Built in M3:** the route map below, per mountain: six rows of 2–3 nodes plus the Summit. Slope rows hold Slopes and Black Diamonds (30% chance each node, at least one Slope per row); the first Stop row always has a Lodge, the second always a Warming Hut, and the rest are Huts, Lodges or Events. Each node links to the nodes roughly below it, so paths branch and rejoin. Every route is 4 descents and 2 stops per mountain, 15 descents in all. Stop rows can also hold a **Slalom** bonus stage (⚑): a 450–600 m gate course (a gate every 17 m) with no yeti. It pays 1 Token per gate on top of its Style, +8 Tokens and a reward pick for a perfect run (every gate), and doesn't count toward the 15 descents or end the run. Runs save between nodes (Continue on the title screen).
+**Built in M3:** the route map below, per mountain: six rows of 2–3 nodes plus the Summit. Slope rows hold Slopes and Black Diamonds (30% chance each node, at least one Slope per row); the first Stop row always has a Lodge, the second always a Warming Hut, and the rest are Huts, Lodges or Events. Each node links to the nodes roughly below it, so paths branch and rejoin. Every route is 4 descents and 2 stops per mountain, 15 descents in all. Stop rows can also hold **bonus stages**: no yeti, they can't end the run, and they don't count toward the 15 descents. They pay their own way instead of in Style Tokens (their combo-multiplied Style would be worth several Black Diamonds); a great run is worth about two Black Diamonds.
+- **Slalom** (⚑): a 450–600 m gate course, a gate every 17 m. Half a Token per gate; a perfect run (every gate) adds +6 and a reward pick.
+- **Burning Man** (🔥): you're on fire in the densest forest on the mountain (difficulty 8–10). Trees you touch or pass within 1.8 m of catch fire instead of crashing you: 20 Style × combo each (dead trees double) and +7% flame. Your flame drains 10%/s; run out and the stage ends. Rocks, dogs and the edge tree line still crash you. One Token per 8 trees; a reward pick for an inferno of 80 / 100 / 120 trees (mountain 1 / 2 / 3). Simulated: a careful skier on the safe line burns out after ~4 trees; a straight tuck burns 55–110; a skier hunting trees 105–150. Runs save between nodes (Continue on the title screen).
 
 ```
 Skier pick ─▶ Mountain 1 map ─▶ … ─▶ Summit 1 ─▶ Mountain 2 map ─▶ … ─▶ Summit 2 ─▶ Mountain 3 ─▶ Summit 3 = WIN
@@ -139,3 +141,4 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 | v1.4 | 2026-10-18 | M3: route map, Black Diamonds (+1.5 difficulty, cap 9), Warming Hut options, 8 Events, 6 Curses, 4 skiers |
 | v1.5 | 2026-10-18 | M4: profile and skier unlocks, Altitude numbers, Daily Seed, run summary |
 | v1.6 | 2026-10-18 | Slalom bonus stage; Avalanche descents pay 2× Tokens and a guaranteed rare (two on a Black Diamond) |
+| v1.7 | 2026-10-18 | Burning Man bonus stage; bonus stages pay their own way (Slalom payout cut from 45–60 to ~17–22 Tokens) |
