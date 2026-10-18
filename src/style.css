@@ -1087,3 +1087,76 @@ body {
   right: 0;
   top: -0.4em;
 }
+
+/* Studio splash: ?God Complex Studios, in the Memphis logo's colors, before the start screen. */
+#splash {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: #1b1b3a;
+  transition: opacity 0.5s ease;
+}
+
+#splash.gone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.studio {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  animation: studio-in 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.studio-row {
+  display: flex;
+  align-items: center;
+  gap: 0.06em;
+}
+
+.studio-q {
+  color: #ffd23f;
+  font: 400 clamp(56px, 17vw, 92px)/0.8 'Bungee', var(--font-display);
+  text-shadow: 0.06em 0.06em 0 #ff3e7f;
+  transform: rotate(-12deg) translateY(-0.04em);
+}
+
+.studio-name {
+  position: relative;
+  color: #fdf6e3;
+  font: 400 clamp(30px, 9.5vw, 52px)/1 'Bungee', var(--font-display);
+  text-transform: uppercase;
+  text-shadow: 0.08em 0.08em 0 #ff3e7f;
+}
+
+.studio-sub {
+  position: relative;
+  padding: 7px 10px;
+  background: #2ec4b6;
+  color: #1b1b3a;
+  font: 400 clamp(10px, 3vw, 14px)/1 'Press Start 2P', monospace;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+@keyframes studio-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-6deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio {
+    animation: none;
+  }
+}
+
+.meta.credit {
+  opacity: 0.7;
+  font-size: 11px;
+}

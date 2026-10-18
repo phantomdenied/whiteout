@@ -2,6 +2,7 @@
   "name": "whiteout",
   "private": true,
   "version": "0.0.1",
+  "author": "?God Complex Studios",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

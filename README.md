@@ -1,5 +1,7 @@
 # Whiteout
 
+By **?God Complex Studios**.
+
 A downhill-skiing roguelike for phones: every slope is a chase, and the yeti is the clock. Inspired by SkiFree (1991); original name, art, and code.
 
 **Play it:** https://phantomdenied.github.io/whiteout/ (best on a phone, held upright)

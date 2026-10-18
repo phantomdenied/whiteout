@@ -95,6 +95,9 @@ import {
   useHut,
 } from './run';
 
+const STUDIO = '?God Complex Studios';
+/** When the studio splash went away: the tap that skips it shouldn't also start the game. */
+let splashSkipped = -Infinity;
 const BEST_KEY = 'whiteout:best';
 const SAVE_KEY = 'whiteout:run';
 const PROFILE_KEY = 'whiteout:profile';
@@ -377,7 +380,7 @@ snackBar.addEventListener('click', (e) => {
 });
 document.addEventListener('visibilitychange', () => document.hidden && pause());
 // Document level: steering captures the pointer, which retargets the click away from the overlay.
-document.addEventListener('click', () => mode === 'attract' && setMode('title'));
+document.addEventListener('click', () => mode === 'attract' && performance.now() - splashSkipped > 500 && setMode('title'));
 for (const type of ['pointerdown', 'keydown'] as const) document.addEventListener(type, () => (lastInput = performance.now()), { capture: true });
 // Audio may only start from a user gesture.
 document.addEventListener('pointerdown', () => sound.unlock(), { capture: true });
@@ -461,7 +464,8 @@ function showAttract() {
   card.innerHTML = `
     ${logoHtml()}
     <p class="press">Tap to start</p>
-    <span class="meta">${best ? `Best: ${best} of ${TOTAL_DESCENTS} descents` : 'A downhill roguelike'}</span>`;
+    <span class="meta">${best ? `Best: ${best} of ${TOTAL_DESCENTS} descents` : 'A downhill roguelike'}</span>
+    <span class="meta credit">© 2026 ${STUDIO}</span>`;
 }
 
 function showTitle() {
@@ -487,7 +491,8 @@ function showTitle() {
     <div class="actions"><button class="btn ghost" id="chalet">Chalet · ${profile.patches} Patches</button></div>
     ${dailyHtml()}
     <span class="meta">${saved ? `Saved run: ${esc(MOUNTAINS[saved.mountain].name)}, ◆ ${saved.tokens} · ` : ''}${best ? `Best: ${best} of ${TOTAL_DESCENTS} descents` : `Seed ${pendingSeed}`}${profile.altitude ? ` · Altitude ${profile.altitude} unlocked` : ''}</span>
-    <div class="actions small">${muteButton()}${installHtml()}</div>`;
+    <div class="actions small">${muteButton()}${installHtml()}</div>
+    <span class="meta credit">© 2026 ${STUDIO}</span>`;
   on('#go', () => {
     if (saved) pendingSeed = randomSeed();
     setMode('skier');
@@ -1243,6 +1248,21 @@ if ('serviceWorker' in navigator && document.querySelector('link[rel="manifest"]
 
 // ?debug exposes the live game for automated browser tests.
 if (params.has('debug')) Object.assign(window, { whiteout: () => ({ game, mode }) });
+
+// The studio splash: once per visit, about 2 s, any tap or key skips it.
+const splash = $<HTMLDivElement>('#splash');
+const hideSplash = () => {
+  if (splash.classList.contains('gone')) return;
+  splashSkipped = performance.now();
+  splash.classList.add('gone');
+  setTimeout(() => splash.remove(), 600);
+};
+splash.addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  hideSplash();
+});
+window.addEventListener('keydown', hideSplash, { once: true });
+setTimeout(hideSplash, params.has('bot') || params.has('debug') ? 0 : 2200);
 
 setMode('attract');
 requestAnimationFrame(frame);
