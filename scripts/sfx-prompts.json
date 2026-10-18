@@ -1,0 +1,116 @@
+[
+  {
+    "name": "hiss",
+    "loop": true,
+    "dur": 4,
+    "text": "skis carving fast on packed snow, continuous smooth hiss and swish, steady, close, no wind, no music"
+  },
+  {
+    "name": "wind",
+    "loop": true,
+    "dur": 10,
+    "text": "cold alpine mountain wind ambience, gentle gusts over snow, lonely and wide, no music, no voices"
+  },
+  {
+    "name": "rumble",
+    "loop": true,
+    "dur": 5,
+    "text": "avalanche rumble, deep roaring snow slide right behind, continuous, powerful low end, no music"
+  },
+  {
+    "name": "fire",
+    "loop": true,
+    "dur": 4,
+    "text": "pine trees burning, fire crackling and roaring, continuous, close, no music"
+  },
+  {
+    "name": "roar",
+    "dur": 2,
+    "text": "yeti monster roar, deep guttural angry bellow, echoing across snowy mountains"
+  },
+  {
+    "name": "step",
+    "dur": 1,
+    "text": "single heavy monster footstep in deep snow, low thud with crunch"
+  },
+  {
+    "name": "crash",
+    "dur": 1,
+    "text": "skier slamming into a tree, thud, branches shake, snow burst, cartoonish"
+  },
+  {
+    "name": "nearMiss",
+    "dur": 1,
+    "text": "fast close whoosh, skier zipping past a tree, airy and quick"
+  },
+  {
+    "name": "jump",
+    "dur": 1,
+    "text": "quick upward swoosh and light pop, skier jumping off snow"
+  },
+  {
+    "name": "land",
+    "dur": 1,
+    "text": "skis landing on packed snow, soft thud with crunch, single"
+  },
+  {
+    "name": "trickLand",
+    "dur": 1,
+    "text": "short bright success sting, two quick rising notes, playful arcade, 8-bit inspired"
+  },
+  {
+    "name": "coin",
+    "dur": 1,
+    "text": "coin collect sound, bright and rewarding, 8-bit inspired, single"
+  },
+  {
+    "name": "gate",
+    "dur": 1,
+    "text": "short bright ding, slalom gate passed, clean small bell, single"
+  },
+  {
+    "name": "ignite",
+    "dur": 1,
+    "text": "whoosh of flames igniting a dry tree, quick fire burst"
+  },
+  {
+    "name": "eaten",
+    "dur": 2,
+    "text": "monster chomp and big gulp, cartoonish and comedic"
+  },
+  {
+    "name": "buried",
+    "dur": 2,
+    "text": "heavy wall of snow collapsing, muffled thump, buried under snow"
+  },
+  {
+    "name": "finish",
+    "dur": 2,
+    "text": "short triumphant arcade fanfare, finish line, 90s video game"
+  },
+  {
+    "name": "unlock",
+    "dur": 2,
+    "text": "level up fanfare, triumphant, short celebration, 8-bit inspired"
+  },
+  {
+    "name": "click",
+    "dur": 1,
+    "text": "crisp menu button click, short plastic tick, clearly audible, mobile game UI, single"
+  },
+  {
+    "name": "bounce",
+    "dur": 1,
+    "text": "cartoon boing, rubbery bounce, comedic, single"
+  },
+  {
+    "name": "snack",
+    "dur": 1,
+    "text": "quick slurp and gulp of hot cocoa, cartoon, single"
+  },
+  {
+    "name": "secret",
+    "dur": 2,
+    "text": "magical twinkle chime, mysterious discovery, sparkling, short"
+  }
+]

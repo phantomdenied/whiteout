@@ -1,12 +1,33 @@
-// Synthesized sound (Web Audio, no files): one-shot effects, a ski hiss that follows your speed, and yeti
-// footsteps that quicken as it closes in (GDD §9: every cue also has a visual, so it plays fine muted).
-// Browsers only allow audio after a user gesture, so nothing plays until unlock() is called from one.
+// Sound (Web Audio): recorded effects and loops (generated with ElevenLabs, in public/sfx), with synthesized
+// versions that play until the recordings load, or if they can't (the single-file build has no sfx folder).
+// A ski hiss follows your speed, yeti footsteps quicken as it closes in, wind blows under every run, an
+// avalanche rumbles louder as it gains on you, and the Burning Man crackles. (GDD §9: every cue also has a
+// visual, so the game plays fine muted.) Browsers only allow audio after a user gesture, so nothing plays
+// until unlock() is called from one.
 
 export type SoundName =
   | 'roar' | 'crash' | 'nearMiss' | 'jump' | 'trick' | 'land' | 'trickLand' | 'bounce' | 'coin' | 'snack'
   | 'finish' | 'eaten' | 'buried' | 'burn' | 'click' | 'secret' | 'unlock' | 'gate' | 'ignite';
 
 const MASTER = 0.6;
+const SFX_URL = './sfx/';
+/** Recorded one-shots: file and playback gain (balanced by ear against each other). */
+const SAMPLES: Partial<Record<SoundName | 'step', [string, number]>> = {
+  roar: ['roar.mp3', 0.8], step: ['step.mp3', 0.9], crash: ['crash.mp3', 0.7], nearMiss: ['nearMiss.mp3', 0.45],
+  jump: ['jump.mp3', 0.35], land: ['land.mp3', 0.4], trickLand: ['trickLand.mp3', 0.45], coin: ['coin.mp3', 0.35],
+  gate: ['gate.mp3', 0.45], ignite: ['ignite.mp3', 0.22], burn: ['ignite.mp3', 0.4], eaten: ['eaten.mp3', 0.85],
+  buried: ['buried.mp3', 0.85], finish: ['finish.mp3', 0.5], unlock: ['unlock.mp3', 0.55], click: ['click.mp3', 0.35],
+  bounce: ['bounce.mp3', 0.5], snack: ['snack.mp3', 0.5], secret: ['secret.mp3', 0.6],
+};
+/** Recorded loops (WAV, so they loop without the gap MP3 encoding adds). */
+const LOOPS = { hiss: 'hiss.wav', wind: 'wind.wav', rumble: 'rumble.wav', fire: 'fire.wav' } as const;
+type LoopName = keyof typeof LOOPS;
+
+/** Levels for the loops each frame (0–1): the avalanche's closeness and the Burning Man's flame. */
+export interface Ambience {
+  rumble: number;
+  fire: number;
+}
 
 export class Sound {
   private ctx: AudioContext | null = null;
@@ -18,6 +39,10 @@ export class Sound {
   /** Last values sent to the hiss, so automation is only scheduled when they change (Safari slows down otherwise). */
   private hissLevel = -1;
   private hissFreq = -1;
+  private samples = new Map<string, AudioBuffer>();
+  private loops: Partial<Record<LoopName, { gain: GainNode; src: AudioBufferSourceNode; level: number; rate: number }>> = {};
+  /** Last ignite, so a forest going up doesn't stack dozens of copies. */
+  private lastIgnite = 0;
   muted = false;
 
   /** Create (or resume) the audio context. Call from a click / tap handler. */
@@ -50,8 +75,73 @@ export class Sound {
       this.hissGain.gain.value = 0;
       src.connect(this.hissFilter).connect(this.hissGain).connect(this.master);
       src.start();
+      void this.loadSamples(ctx);
     } catch {
       this.ctx = null;
+    }
+  }
+
+  /** Fetch and decode the recordings; each one replaces its synthesized version as soon as it's ready. */
+  private async loadSamples(ctx: AudioContext) {
+    const decode = (data: ArrayBuffer) =>
+      new Promise<AudioBuffer>((resolve, reject) => {
+        // The callback form, for older Safari.
+        const p = ctx.decodeAudioData(data, resolve, reject);
+        if (p && typeof p.then === 'function') p.then(resolve, reject);
+      });
+    const load = async (file: string) => {
+      if (this.samples.has(file)) return this.samples.get(file)!;
+      const res = await fetch(SFX_URL + file);
+      if (!res.ok) throw new Error(file);
+      const buf = await decode(await res.arrayBuffer());
+      this.samples.set(file, buf);
+      return buf;
+    };
+    await Promise.allSettled([
+      ...(Object.keys(LOOPS) as LoopName[]).map(async (name) => {
+        const buf = await load(LOOPS[name]);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        src.connect(gain).connect(this.master!);
+        src.start(0, Math.random() * buf.duration);
+        this.loops[name] = { gain, src, level: 0, rate: 1 };
+      }),
+      ...[...new Set(Object.values(SAMPLES).map(([file]) => file))].map(load),
+    ]);
+  }
+
+  private playSample(name: SoundName | 'step', volume = 1): boolean {
+    const entry = SAMPLES[name];
+    const buf = entry && this.samples.get(entry[0]);
+    if (!this.ctx || !buf || !entry) return false;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    // A touch of pitch variety so repeats don't sound copy-pasted.
+    src.playbackRate.value = 0.96 + Math.random() * 0.08;
+    const g = this.ctx.createGain();
+    g.gain.value = entry[1] * volume;
+    src.connect(g).connect(this.master!);
+    src.start();
+    return true;
+  }
+
+  /** Ease a loop toward a level and playback rate, scheduling automation only when they change. */
+  private setLoop(name: LoopName, level: number, rate = 1) {
+    const loop = this.loops[name];
+    if (!loop || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const l = Math.round(level * 100) / 100;
+    if (l !== loop.level) {
+      loop.level = l;
+      loop.gain.gain.setTargetAtTime(l, t, 0.12);
+    }
+    const r = Math.round(rate * 50) / 50;
+    if (r !== loop.rate) {
+      loop.rate = r;
+      loop.src.playbackRate.setTargetAtTime(r, t, 0.2);
     }
   }
 
@@ -60,12 +150,18 @@ export class Sound {
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(muted ? 0 : MASTER, this.ctx.currentTime, 0.02);
   }
 
-  /** Continuous sounds, once per frame: ski hiss from speed, yeti footsteps from proximity. */
-  update(dt: number, playing: boolean, speed: number, airborne: boolean, proximity: number) {
+  /** Continuous sounds, once per frame: ski hiss from speed, wind, the avalanche and fire, yeti footsteps. */
+  update(dt: number, playing: boolean, speed: number, airborne: boolean, proximity: number, ambience: Ambience = { rumble: 0, fire: 0 }) {
     const ctx = this.ctx;
     if (!ctx || !this.hissGain || !this.hissFilter) return;
     const t = ctx.currentTime;
-    const hiss = playing && !airborne ? Math.round(Math.min(0.12, speed / 150) * 200) / 200 : 0;
+    const recordedHiss = !!this.loops.hiss;
+    this.setLoop('hiss', playing && !airborne ? Math.min(0.55, speed / 32) : 0, 0.85 + Math.min(speed, 22) / 70);
+    this.setLoop('wind', playing ? 0.22 : 0);
+    this.setLoop('rumble', playing ? ambience.rumble * 0.9 : 0);
+    this.setLoop('fire', playing ? ambience.fire * 0.45 : 0);
+    // The synthesized hiss stands in only until the recorded one loads.
+    const hiss = playing && !airborne && !recordedHiss ? Math.round(Math.min(0.12, speed / 150) * 200) / 200 : 0;
     if (hiss !== this.hissLevel) {
       this.hissLevel = hiss;
       this.hissGain.gain.setTargetAtTime(hiss, t, 0.05);
@@ -82,12 +178,17 @@ export class Sound {
     this.stepClock -= dt;
     if (this.stepClock <= 0) {
       this.stepClock = 0.6 - proximity * 0.38;
-      this.step(0.12 + proximity * 0.3);
+      if (!this.playSample('step', 0.35 + proximity * 0.65)) this.step(0.12 + proximity * 0.3);
     }
   }
 
   play(name: SoundName) {
     if (!this.ctx || this.muted) return;
+    if (name === 'ignite') {
+      if (this.ctx.currentTime - this.lastIgnite < 0.07) return;
+      this.lastIgnite = this.ctx.currentTime;
+    }
+    if (this.playSample(name)) return;
     switch (name) {
       case 'roar':
         this.tone(120, 0.9, 'sawtooth', 0.22, 60);

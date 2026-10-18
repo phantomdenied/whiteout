@@ -159,6 +159,7 @@ Title ─▶ Skier pick ─▶ Route map ─▶ Slope ─▶ Reward pick ─▶ 
 - Readable cues: a roar on spawn, footsteps when it's within one screen, a "whoosh" for near misses, a crunch and wobble for crashes.
 - Every cue also has a visual equivalent, so the game is fully playable on mute (phones are often muted).
 - **Built in M4:** all sound is synthesized live with Web Audio (no audio files): a ski hiss that follows your speed, yeti footsteps that quicken as it closes in, a roar on spawn (a low rumble for an Avalanche), and short cues for crashes, near misses, jumps, tricks, landings, Tokens, Snacks, the finish and the secret. A Sound on/off toggle (title and pause screens, or `M`) is remembered. Music is not built yet.
+- **Recorded sound (v1.7):** the effects and loops are now recordings generated with ElevenLabs Sound Effects (royalty-free), trimmed, peak-normalized and shipped in `public/sfx` (about 1.2 MB: one-shots as mono MP3, loops as mono WAV so they loop without a gap). New loops: wind under every run, an avalanche rumble that swells as the wall gains on you, and fire in the Burning Man. The synthesized sounds remain as the fallback until the files load (and in the single-file build). The prompts are in `scripts/sfx-prompts.json`.
 
 ## 10. Business Model
 - Premium, one-time purchase. No ads, no in-app purchases, no energy timers.

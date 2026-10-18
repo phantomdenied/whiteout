@@ -14,7 +14,7 @@ New in M4:
 - **Unlocks:** start as the Rookie; unlock the Snowboarder, the Retiree and the Dog by playing (the skier screen says how).
 - **Altitude:** win once to unlock Altitude 1, a 10-step difficulty ladder.
 - **Daily run:** the same mountain for everyone each day (UTC). Your best and attempts are kept.
-- **Sound:** synthesized effects, a ski hiss and yeti footsteps. Toggle on the title or pause screen, or press `M`.
+- **Sound:** recorded effects (generated with ElevenLabs): ski hiss, wind, yeti roar and footsteps, avalanche rumble, fire, crashes, tricks and more. Toggle on the title or pause screen, or press `M`.
 - **Run summary:** the end screen shows your route and copies a text summary (handy for feedback).
 - **Slalom:** gates on some slopes (they mark a safe line and build your combo), and a no-yeti Slalom bonus stage on the map that pays per gate.
 - **Burning Man** bonus stage: you're on fire in a dense forest. Trees you touch go up in flames for points and feed your flame; rocks still crash you, and if your flame burns out the stage ends.
