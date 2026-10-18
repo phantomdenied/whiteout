@@ -9,7 +9,8 @@
     "build:single": "npm run build && node scripts/inline.mjs",
     "preview": "vite preview --host",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sim": "vite-node sim/run.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

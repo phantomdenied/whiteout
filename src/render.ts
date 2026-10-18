@@ -1,6 +1,7 @@
 // Canvas renderer. Placeholder art, all drawn from shapes (original, not SkiFree's sprites).
 // The camera keeps the skier about 30% from the top so most of the screen shows the slope ahead.
 import { CFG, type Game, type Obstacle, airborne, yetiProximity } from './engine';
+import { SLOPE } from './slope';
 
 const C = {
   snow: '#f3f6f9',
@@ -10,6 +11,9 @@ const C = {
   spruce: '#1f4d3a',
   spruceLight: '#2c6a4f',
   trunk: '#6b4a2f',
+  dead: '#7a6a5a',
+  flame: '#ff8a1f',
+  flameCore: '#ffd23f',
   rock: '#7d8a96',
   rockDark: '#5d6873',
   stump: '#8a6240',
@@ -34,6 +38,12 @@ const C = {
 const VIEW_WIDTH_M = 26;
 const VIEW_HEIGHT_M = 44;
 const SKIER_SCREEN_Y = 0.3;
+/** Snow and grain per mountain: groomed resort, shaded forest, bright alpine. */
+const SNOW = [
+  { snow: '#f3f6f9', speck: '#dbe5ee' },
+  { snow: '#e8eef2', speck: '#d0dbe4' },
+  { snow: '#f7f9fc', speck: '#d6e2f0' },
+];
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -81,11 +91,12 @@ export class Renderer {
     const toX = (x: number) => w / 2 + (x - this.camX) * ppm + sx;
     const toY = (y: number) => (y - camY) * ppm + sy;
 
-    ctx.fillStyle = C.snow;
+    const tone = SNOW[g.params.mountain] ?? SNOW[0];
+    ctx.fillStyle = tone.snow;
     ctx.fillRect(0, 0, w, h);
 
     // Snow grain, fixed to the world so it scrolls.
-    ctx.fillStyle = C.speck;
+    ctx.fillStyle = tone.speck;
     const cell = 3;
     const x0 = Math.floor((this.camX - w / 2 / ppm) / cell) - 1;
     const x1 = Math.ceil((this.camX + w / 2 / ppm) / cell) + 1;
@@ -119,19 +130,28 @@ export class Renderer {
       ctx.stroke();
     }
 
-    // Boundary poles at the slope edges, every 8 m.
-    for (const side of [-1, 1]) {
-      const bx = toX(side * CFG.slopeHalfWidth);
-      if (bx < -20 || bx > w + 20) continue;
-      for (let y = Math.floor(camY / 8) * 8; y < camY + h / ppm + 8; y += 8) {
-        const by = toY(y);
-        ctx.fillStyle = C.shadow;
-        ctx.fillRect(bx - 1, by, ppm * 0.5, 2);
-        ctx.fillStyle = C.boundary;
-        ctx.fillRect(bx - 1.5, by - ppm * 1.1, 3, ppm * 1.1);
-        ctx.fillStyle = C.ski;
-        ctx.fillRect(bx - 1.5, by - ppm * 1.1, 3, ppm * 0.25);
+    // Finish gate: a checkered line across the slope and a banner in the middle.
+    const L = g.params.length;
+    if (Number.isFinite(L) && toY(L) > -ppm * 3 && toY(L) < h + ppm * 3) {
+      const fy = toY(L);
+      const sq = ppm * 0.6;
+      for (let x = -SLOPE.halfWidth, i = 0; x < SLOPE.halfWidth; x += 0.6, i++) {
+        ctx.fillStyle = i % 2 ? C.ski : '#ffffff';
+        ctx.fillRect(toX(x), fy - sq / 2, sq + 0.5, sq / 2);
+        ctx.fillStyle = i % 2 ? '#ffffff' : C.ski;
+        ctx.fillRect(toX(x), fy, sq + 0.5, sq / 2);
       }
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = C.ski;
+        ctx.fillRect(toX(side * 4) - 2, fy - ppm * 3, 4, ppm * 3);
+      }
+      ctx.fillStyle = C.boundary;
+      ctx.fillRect(toX(-4), fy - ppm * 3, 8 * ppm, ppm * 0.9);
+      ctx.fillStyle = C.ski;
+      ctx.font = `900 ${Math.round(ppm * 0.7)}px 'Big Shoulders Display', 'Arial Narrow', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('FINISH', toX(0), fy - ppm * 2.55);
     }
 
     // Depth-sort everything by its ground y.
@@ -146,6 +166,19 @@ export class Renderer {
       list.push({ y: o.y, draw: () => this.obstacle(o, px, toY(o.y), g.time) });
     }
     list.push({ y: s.y, draw: () => this.skier(g, toX(s.x), toY(s.y)) });
+    if (s.boostT > 0 && s.state === 'ski') {
+      // Speed lines trailing uphill of the skier.
+      ctx.strokeStyle = 'rgba(242, 140, 40, 0.6)';
+      ctx.lineWidth = 2;
+      for (let i = -1; i <= 1; i++) {
+        const bx = toX(s.x) + i * ppm * 0.35;
+        const by = toY(s.y) - ppm * 1.2;
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx - Math.sin(s.angle) * ppm * 1.4, by - Math.cos(s.angle) * ppm * 1.4);
+        ctx.stroke();
+      }
+    }
     const yeti = g.yeti;
     if (yeti.state !== 'waiting') list.push({ y: yeti.y + 0.01, draw: () => this.yeti(g, toX(yeti.x), toY(yeti.y)) });
     list.sort((a, b) => a.y - b.y);
@@ -177,6 +210,32 @@ export class Renderer {
     const { ctx, ppm } = this;
     const u = ppm;
     switch (o.kind) {
+      case 'deadtree': {
+        this.ground(px, py, 0.6);
+        ctx.strokeStyle = C.dead;
+        ctx.lineCap = 'round';
+        ctx.lineWidth = u * 0.18;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px, py - u * 2.2);
+        ctx.stroke();
+        ctx.lineWidth = u * 0.09;
+        for (const [hy, dir, len] of [[0.9, -1, 0.7], [1.3, 1, 0.6], [1.75, -1, 0.45]]) {
+          ctx.beginPath();
+          ctx.moveTo(px, py - u * hy);
+          ctx.lineTo(px + dir * u * len, py - u * (hy + 0.4));
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+        if (o.burning) {
+          const f = 0.8 + Math.sin(time * 20 + o.phase) * 0.2;
+          ctx.fillStyle = C.flame;
+          blob(ctx, px, py - u * 1.5, u * 0.55 * f, u * 0.95 * f);
+          ctx.fillStyle = C.flameCore;
+          blob(ctx, px, py - u * 1.25, u * 0.28 * f, u * 0.5 * f);
+        } else if (o.hit) this.stars(px, py - u * 2.4, time);
+        break;
+      }
       case 'tree': {
         this.ground(px, py, 0.9);
         ctx.fillStyle = C.trunk;
@@ -441,6 +500,7 @@ export class Renderer {
       ctx.fillRect(-u * 0.18, -u * 1.48, u * 0.36, u * 0.06);
     }
     ctx.restore();
+    if (y.stunT > 0) this.stars(px, py - u * 3.2, g.time);
   }
 }
 

@@ -1,6 +1,6 @@
 # Descent & Controls — Feature Document
 
-> **Version:** v1.1 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.2 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > Skiing should feel good on its own, before any yeti or Gear. Thirty seconds on a phone should be enough to carve, tuck, and jump on purpose.
@@ -30,7 +30,7 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 | Snowplow | −50% speed | |
 | Airtime | 0.6 s (flick), 1.0–1.4 s (ramp) | |
 | Crash downtime | 1.4 s total | 1.0 s tumble + 0.4 s getting up |
-| Slope width | 60 m (about 3 screens) | Beyond it are the Edge Yetis, see [Yetis](yetis.md#edge-yetis) |
+| Slope width | 54 m skiable (about 2 screens), bounded by a tree line | Beyond it are the Edge Yetis (later), see [Yetis](yetis.md#edge-yetis) |
 
 ### Obstacle catalogue
 | Obstacle | Jumpable? | On hit | Notes / hooks |
@@ -48,10 +48,11 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 | Gate flags | — | Pass between them for Style | Slalom chunks |
 
 ### Slope generation
-- A slope is stitched from **chunks**: segments about one screen tall (around 40 m), hand-authored in a data file and tagged with difficulty (1–10), theme (resort/forest/alpine), and features (ramp, gates, traffic, narrow, open).
-- **Generation:** a seeded RNG picks chunks to fill the slope's length under a **difficulty budget** that rises within the slope (warm-up → crux → final sprint) and with each slope of the run.
-- **Guarantees:** every chunk has a clean line at cruise speed, the edges of adjacent chunks must line up (no blocked joins), and no two hardest chunks appear back to back.
-- **Validation:** the simulator's "clean skier" bot must clear every generated slope without Gear. Seeds it can't clear are rejected and regenerated.
+- A slope is stitched from **chunks**: segments 40 m tall, hand-drawn as 30 × 20 text grids (one cell = 2 m) in `src/chunks.ts` and tagged with difficulty (1–10). Theme and feature tags come later.
+- **Layout:** a 30 m clear run-in, then chunks separated by 8 m of open snow (seams, so a corridor that exits on one side can reach the next entry), randomly mirrored. A tree line stands just outside the skiable width on both sides. Each mountain swaps a share of trees for dead trees (8% / 25% / 15%).
+- **Generation:** a seeded RNG picks chunks to fill the slope's length under a **difficulty budget** that rises within the slope (warm-up −2, crux +1, final sprint ±0) and with each slope of the run. No chunk repeats back to back, and no two chunks of difficulty 8+ appear back to back.
+- **Guarantees (validator):** a path search finds the cheapest clean line from the start to the finish gate. The line keeps hitbox + 0.6 m from every crash obstacle and ramp (dogs: their whole wander range), turns at most 45°, and changes its sideways rate gradually so it can actually be skied. A clean tuck along it must keep the yeti at least 12 m away. A layout that fails is rejected and re-rolled (up to 24 tries, then a cleared corridor as a fallback; in tests no slope needs the fallback).
+- **Validation:** the simulator's "clean skier" bot (`src/bot.ts`) follows the validator's line in a tuck without jumping, and must clear every generated slope without Gear (`npm run sim`, plus a test). A "cruiser" bot that never tucks must get caught.
 
 ### Conditions (whole-slope modifiers; Mountains 2–3)
 | Condition | Effect |
@@ -90,8 +91,8 @@ Pick by playtest: time to clear the first slope, crash rate, self-reported feel.
 | Level | Content | Status |
 |---|---|---|
 | Core | Steering, tuck, jump, crash, trees/rocks/stumps/ramps, one endless seeded slope | M0 prototype |
-| Expected | Chunk library and finish gate, tricks, dogs and traffic, near misses, control-scheme setting | Not started |
-| Desired | Conditions, secrets (mushroom, burning trees), slalom chunks | Not started |
+| Expected | Chunk library and finish gate, tricks, dogs and traffic, near misses, control-scheme setting | M1: chunks, finish gate, tricks, dogs, near misses. Traffic and control setting not started |
+| Desired | Conditions, secrets (mushroom, burning trees), slalom chunks | Burning trees and mushrooms via Gear (M1). Rest not started |
 | Aspirational | Chunk editor, community seeds | Not started |
 
 ## Change Log
@@ -99,3 +100,4 @@ Pick by playtest: time to clear the first slope, crash rate, self-reported feel.
 |---|---|---|
 | v1.0 | 2026-10-17 | First draft |
 | v1.1 | 2026-10-17 | Avalanche speed defined; tuck speed made fixed |
+| v1.2 | 2026-10-18 | M1: chunk grid format, seams, edge tree line, validator rules, bots; slope width 54 m |

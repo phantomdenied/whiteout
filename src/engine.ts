@@ -1,7 +1,10 @@
 // Pure Whiteout simulation (no DOM). Rules follow docs/features/descent-and-controls.md and yetis.md.
 // step() advances one fixed 60 Hz tick and mutates the state in place (it runs 60 times a second);
 // determinism comes from the seed plus the input sequence, so a run replays exactly.
-import { createRng } from './rng';
+import { BASE_MODS, type Mods } from './gear';
+import { KINDS, type Obstacle, type ObstacleKind, SLOPE, type SlopeParams, buildSlope } from './slope';
+
+export { KINDS, type Obstacle, type ObstacleKind } from './slope';
 
 /** All tuning in one place. Units are meters and seconds; +y is downhill, x = 0 is the slope's center line. */
 export const CFG = {
@@ -19,8 +22,11 @@ export const CFG = {
   tuckTurnRate: Math.PI * 0.8,
   maxAngle: Math.PI / 2,
   hikeSpeed: 1.5,
+  /** Speed boost (Rocket Boots, Good Boy, foraging): top speed × this, accelerating twice as fast. */
+  boostMult: 1.4,
 
   hopAir: 0.6,
+  springAir: 1.1,
   rampAirMin: 0.7,
   rampAirPerCruise: 0.6,
   trickTime: 0.25,
@@ -29,22 +35,16 @@ export const CFG = {
   crashTime: 1.4,
   /** Slowdown factor for riding through moguls on the ground. */
   mogulFactor: 0.55,
-  skierR: 0.35,
+  skierR: SLOPE.skierR,
 
   nearMissGap: 0.5,
   nearMissMinSpeed: 8,
   nearMissStyle: 25,
-  /** Combo multiplier = min(maxMult, 1 + chain × multPerChain). */
+  /** Combo multiplier = min(maxMult, 1 + chain × multPerChain). Only trick and near-miss Style is multiplied. */
   multPerChain: 0.5,
   maxMult: 4,
-
-  slopeHalfWidth: 30,
-  genHalfWidth: 48,
-  band: 10,
-  genAhead: 70,
-  cullBehind: 70,
-  /** Clear run-in at the start of the slope. */
-  startClear: 30,
+  /** Tokens = Style ÷ this, paid at the finish gate. */
+  styleRate: 200,
 
   yeti: {
     grace: 8,
@@ -53,40 +53,18 @@ export const CFG = {
     uphill: 4,
     /** Hard pursuer cap, always below clean tuck speed (yetis.md). */
     cap: 17.5,
+    minGrace: 3,
     spawnBehind: 40,
     leash: 60,
     catchR: 1.0,
     eatTime: 2,
+    /** Max stagger per slope. */
+    staggerCap: 3,
   },
 };
 
-export type ObstacleKind = 'tree' | 'rock' | 'stump' | 'moguls' | 'ramp' | 'dog';
-type Effect = 'crash' | 'slow' | 'ramp';
-
-export const KINDS: Record<ObstacleKind, { r: number; jumpable: boolean; effect: Effect; weight: number }> = {
-  tree: { r: 0.7, jumpable: false, effect: 'crash', weight: 45 },
-  rock: { r: 0.55, jumpable: true, effect: 'crash', weight: 12 },
-  stump: { r: 0.45, jumpable: true, effect: 'crash', weight: 12 },
-  moguls: { r: 1.3, jumpable: true, effect: 'slow', weight: 10 },
-  ramp: { r: 0.9, jumpable: true, effect: 'ramp', weight: 6 },
-  dog: { r: 0.45, jumpable: true, effect: 'crash', weight: 5 },
-};
-
-export interface Obstacle {
-  id: number;
-  kind: ObstacleKind;
-  x: number;
-  y: number;
-  /** Dogs wander around x0. */
-  x0: number;
-  phase: number;
-  /** Crashed into: ignored from then on, so you can get up and ski off. */
-  hit: boolean;
-  /** Moguls/ramp already used. */
-  touched: boolean;
-  /** Has scrolled past the skier (near-miss check done). */
-  passed: boolean;
-}
+/** An endless M0-style slope, used by tests and as a sandbox. */
+export const ENDLESS: SlopeParams = { length: Infinity, difficulty: 3, mountain: 0, yetiSpeed: CFG.yeti.speed, grace: CFG.yeti.grace };
 
 export type SkierState = 'ski' | 'crash' | 'eaten';
 
@@ -107,6 +85,7 @@ export interface Skier {
   /** Seconds left in the current trick pose; landing while > 0 is a crash. */
   trickT: number;
   crashT: number;
+  boostT: number;
 }
 
 export type YetiState = 'waiting' | 'chasing' | 'eating';
@@ -118,6 +97,7 @@ export interface Yeti {
   vx: number;
   vy: number;
   timer: number;
+  stunT: number;
 }
 
 export type GameEvent =
@@ -126,28 +106,39 @@ export type GameEvent =
   | { type: 'trick'; n: number }
   | { type: 'land'; tricks: number; style: number }
   | { type: 'crash'; kind: ObstacleKind | 'botched' }
+  | { type: 'bounce' }
   | { type: 'moguls' }
   | { type: 'nearMiss'; style: number }
+  | { type: 'burn' }
+  | { type: 'forage' }
+  | { type: 'goodBoy' }
   | { type: 'yetiSpawn' }
   | { type: 'eaten' }
+  | { type: 'finish' }
   | { type: 'over' };
 
 export interface Game {
   seed: number;
+  params: SlopeParams;
+  mods: Mods;
   tick: number;
   time: number;
   skier: Skier;
   yeti: Yeti;
+  /** Sorted by y. */
   obstacles: Obstacle[];
-  /** Next band index to generate. */
-  nextBand: number;
-  generate: boolean;
+  /** The generator's clean line (x per meter), or null. */
+  line: number[] | null;
   /** Furthest downhill point reached; distance Style is 1 per meter of it. */
   maxY: number;
   /** Style from tricks and near misses (combo-multiplied). */
   skillStyle: number;
   /** Tricks and near misses since the last crash. */
   chain: number;
+  bonusTokens: number;
+  staggerUsed: number;
+  bouncesLeft: number;
+  result: 'cleared' | 'eaten' | null;
   over: boolean;
   /** Appended by step(); the UI drains it for sound, shake and toasts. */
   events: GameEvent[];
@@ -166,33 +157,49 @@ export interface Input {
 
 export const NO_INPUT: Input = { turn: 0, tuck: false, brake: false, jump: false };
 
-export function newGame(seed: number, opts: { generate?: boolean } = {}): Game {
-  const g: Game = {
+export interface GameOptions {
+  params?: SlopeParams;
+  mods?: Mods;
+  /** Hand-placed obstacles instead of a generated slope (tests). */
+  obstacles?: Obstacle[];
+}
+
+export function newGame(seed: number, opts: GameOptions = {}): Game {
+  const params = opts.params ?? ENDLESS;
+  const mods = opts.mods ?? BASE_MODS;
+  const slope = opts.obstacles ? { obstacles: [...opts.obstacles].sort((a, b) => a.y - b.y), line: null } : buildSlope(seed, params, CFG.tuck);
+  return {
     seed: seed >>> 0,
+    params,
+    mods,
     tick: 0,
     time: 0,
     skier: {
       x: 0, y: 0, angle: 0, speed: 0, state: 'ski', tuck: false, brake: false,
-      air: 0, airTotal: 0, airKind: 'hop', tricks: 0, trickT: 0, crashT: 0,
+      air: 0, airTotal: 0, airKind: 'hop', tricks: 0, trickT: 0, crashT: 0, boostT: 0,
     },
-    yeti: { state: 'waiting', x: 0, y: -CFG.yeti.spawnBehind, vx: 0, vy: 0, timer: 0 },
-    obstacles: [],
-    nextBand: -Math.ceil(CFG.cullBehind / CFG.band),
-    generate: opts.generate ?? true,
+    yeti: { state: 'waiting', x: 0, y: -CFG.yeti.spawnBehind, vx: 0, vy: 0, timer: 0, stunT: 0 },
+    obstacles: slope.obstacles,
+    line: slope.line,
     maxY: 0,
     skillStyle: 0,
     chain: 0,
+    bonusTokens: 0,
+    staggerUsed: 0,
+    bouncesLeft: mods.bounces,
+    result: null,
     over: false,
     events: [],
   };
-  generateAhead(g);
-  return g;
 }
 
 export const multiplier = (g: Game) => Math.min(CFG.maxMult, 1 + g.chain * CFG.multPerChain);
 export const style = (g: Game) => Math.floor(g.maxY) + Math.floor(g.skillStyle);
 export const distance = (g: Game) => Math.max(0, Math.floor(g.maxY));
+export const tokens = (g: Game) => Math.floor(style(g) / CFG.styleRate) + g.bonusTokens;
 export const airborne = (s: Skier) => s.air > 0;
+export const graceFor = (g: Game) => Math.max(CFG.yeti.minGrace, g.params.grace + g.mods.graceAdd);
+export const yetiSpeedFor = (g: Game) => Math.min(CFG.yeti.cap, g.params.yetiSpeed * g.mods.yetiSpeedMult);
 
 /** 0 when the yeti is waiting or a full leash away, 1 when it's on you. */
 export function yetiProximity(g: Game): number {
@@ -203,66 +210,16 @@ export function yetiProximity(g: Game): number {
   return 1 - Math.min(1, d / CFG.yeti.leash);
 }
 
-// ---------- Slope generation ----------
-
-/** Seed for one band: the slope is a pure function of (seed, band), independent of play timing. */
-function bandSeed(seed: number, band: number): number {
-  let h = (seed ^ Math.imul(band, 0x9e3779b1)) >>> 0;
-  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0;
-  return (h ^ (h >>> 13)) >>> 0;
-}
-
-function pickKind(r: number): ObstacleKind {
-  const kinds = Object.keys(KINDS) as ObstacleKind[];
-  const total = kinds.reduce((sum, k) => sum + KINDS[k].weight, 0);
-  let t = r * total;
-  for (const k of kinds) {
-    t -= KINDS[k].weight;
-    if (t < 0) return k;
+/** Index of the first obstacle with y >= minY (obstacles are sorted by y). */
+export function firstAtOrBelow(obstacles: Obstacle[], minY: number): number {
+  let lo = 0;
+  let hi = obstacles.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (obstacles[mid].y < minY) lo = mid + 1;
+    else hi = mid;
   }
-  return 'tree';
-}
-
-/** Obstacles for one 10 m band. Density rises with distance; outside the slope's edges it's dense forest. */
-export function generateBand(seed: number, band: number): Obstacle[] {
-  const rng = createRng(bandSeed(seed, band));
-  const y0 = band * CFG.band;
-  const out: Obstacle[] = [];
-  let i = 0;
-  const place = (kind: ObstacleKind, x: number, y: number, spacing: number) => {
-    if (out.some((o) => Math.hypot(o.x - x, o.y - y) < spacing)) return;
-    out.push({ id: band * 1000 + i++, kind, x, y, x0: x, phase: rng() * Math.PI * 2, hit: false, touched: false, passed: false });
-  };
-
-  // Forest beyond both edges keeps the slope bounded (Edge Yetis come later).
-  const edgeWidth = CFG.genHalfWidth - CFG.slopeHalfWidth;
-  const edgeCount = Math.floor(edgeWidth * 2 * CFG.band * 0.05 + rng());
-  for (let n = 0; n < edgeCount; n++) {
-    const side = rng() < 0.5 ? -1 : 1;
-    place('tree', side * (CFG.slopeHalfWidth + rng() * edgeWidth), y0 + rng() * CFG.band, 1.6);
-  }
-
-  if (y0 + CFG.band <= CFG.startClear || y0 < 0) return out;
-  const difficulty = Math.min(1, y0 / 2000);
-  const density = 0.006 + 0.01 * difficulty;
-  const count = Math.floor(CFG.slopeHalfWidth * 2 * CFG.band * density + rng());
-  for (let n = 0; n < count; n++) {
-    const y = y0 + rng() * CFG.band;
-    if (y < CFG.startClear) continue;
-    place(pickKind(rng()), (rng() * 2 - 1) * CFG.slopeHalfWidth, y, 2.5);
-  }
-  return out;
-}
-
-function generateAhead(g: Game) {
-  if (!g.generate) return;
-  const s = g.skier;
-  while (g.nextBand * CFG.band < s.y + CFG.genAhead) {
-    g.obstacles.push(...generateBand(g.seed, g.nextBand));
-    g.nextBand++;
-  }
-  const behind = s.y - CFG.cullBehind;
-  if (g.obstacles.length && g.obstacles[0].y < behind) g.obstacles = g.obstacles.filter((o) => o.y >= behind);
+  return lo;
 }
 
 // ---------- Step ----------
@@ -271,29 +228,49 @@ export function step(g: Game, input: Input): void {
   if (g.over) return;
   g.tick++;
   g.time = g.tick * CFG.dt;
-  generateAhead(g);
-  for (const o of g.obstacles) {
-    if (o.kind === 'dog' && !o.hit) o.x = o.x0 + Math.sin(g.time * 0.9 + o.phase) * 2.5;
+  const s = g.skier;
+  for (let i = firstAtOrBelow(g.obstacles, s.y - 60); i < g.obstacles.length && g.obstacles[i].y < s.y + 60; i++) {
+    const o = g.obstacles[i];
+    if (o.kind === 'dog' && !o.hit) o.x = o.x0 + Math.sin(g.time * 0.9 + o.phase) * SLOPE.dogWander;
   }
   updateSkier(g, input);
+  if (g.over) return;
   updateYeti(g);
 }
 
 function crash(g: Game, kind: ObstacleKind | 'botched', o?: Obstacle) {
   const s = g.skier;
+  if (o) o.hit = o.passed = true;
+  if (g.bouncesLeft > 0) {
+    g.bouncesLeft--;
+    s.speed *= 0.4;
+    s.air = 0;
+    s.tricks = 0;
+    s.trickT = 0;
+    g.events.push({ type: 'bounce' });
+    return;
+  }
   s.state = 'crash';
-  s.crashT = CFG.crashTime;
+  s.crashT = CFG.crashTime * g.mods.crashTimeMult;
   s.speed = 0;
   s.air = 0;
   s.tricks = 0;
   s.trickT = 0;
+  s.boostT = 0;
   g.chain = 0;
-  if (o) o.hit = o.passed = true;
   g.events.push({ type: 'crash', kind });
+}
+
+function stagger(g: Game, seconds: number) {
+  const amount = Math.min(seconds, CFG.yeti.staggerCap - g.staggerUsed);
+  if (amount <= 0 || g.yeti.state !== 'chasing') return;
+  g.staggerUsed += amount;
+  g.yeti.stunT += amount;
 }
 
 function updateSkier(g: Game, input: Input) {
   const s = g.skier;
+  const m = g.mods;
   const dt = CFG.dt;
   if (s.state === 'eaten') return;
   if (s.state === 'crash') {
@@ -305,9 +282,10 @@ function updateSkier(g: Game, input: Input) {
   const grounded = !airborne(s);
   s.brake = input.brake;
   s.tuck = input.tuck && !input.brake;
+  s.boostT = Math.max(0, s.boostT - dt);
 
   // Steering: in the air you can still turn (it's a game, and it makes landings readable).
-  const rate = (s.tuck && grounded ? CFG.tuckTurnRate : CFG.turnRate) * dt;
+  const rate = (grounded ? (s.tuck ? CFG.tuckTurnRate * m.tuckTurnMult : CFG.turnRate) : CFG.turnRate * m.airTurnMult) * dt;
   if (input.targetAngle !== undefined) {
     const target = clamp(input.targetAngle, -CFG.maxAngle, CFG.maxAngle);
     s.angle += clamp(target - s.angle, -rate, rate);
@@ -317,13 +295,16 @@ function updateSkier(g: Game, input: Input) {
 
   let hike = 0;
   if (grounded) {
-    let top = (s.tuck ? CFG.tuck : CFG.cruise) * Math.max(0, Math.cos(s.angle));
+    let top = (s.tuck ? CFG.tuck * m.tuckMult : CFG.cruise) * Math.max(0, Math.cos(s.angle));
     if (s.brake) top *= CFG.brakeFactor;
-    s.speed = s.speed < top ? Math.min(top, s.speed + CFG.accel * dt) : Math.max(top, s.speed - CFG.decel * dt);
+    const boosting = s.boostT > 0;
+    if (boosting) top *= CFG.boostMult;
+    const accel = CFG.accel * (boosting ? 2 : 1);
+    s.speed = s.speed < top ? Math.min(top, s.speed + accel * dt) : Math.max(top, s.speed - CFG.decel * dt);
     if (s.brake && s.speed < 0.3) hike = CFG.hikeSpeed;
     if (input.jump) {
-      s.air = s.airTotal = CFG.hopAir;
-      s.airKind = 'hop';
+      s.air = s.airTotal = m.springHop ? CFG.springAir : CFG.hopAir;
+      s.airKind = m.springHop ? 'ramp' : 'hop';
       g.events.push({ type: 'jump' });
     }
   } else {
@@ -351,17 +332,42 @@ function updateSkier(g: Game, input: Input) {
   s.y += s.speed * Math.cos(s.angle) * dt - hike * dt;
   if (s.y > g.maxY) g.maxY = s.y;
 
-  for (const o of g.obstacles) {
+  if (s.y >= g.params.length) {
+    g.result = 'cleared';
+    g.over = true;
+    g.events.push({ type: 'finish' }, { type: 'over' });
+    return;
+  }
+
+  const obs = g.obstacles;
+  for (let i = firstAtOrBelow(obs, s.y - 3); i < obs.length && obs[i].y <= s.y + 3; i++) {
+    const o = obs[i];
     if (o.hit) continue;
     const k = KINDS[o.kind];
     const dx = o.x - s.x;
     const dy = o.y - s.y;
-    if (Math.abs(dy) > 3) {
-      if (!o.passed && dy < -3) o.passed = true;
-      continue;
-    }
     if (Math.hypot(dx, dy) < k.r + CFG.skierR) {
-      if (airborne(s) && (k.jumpable || s.airKind === 'ramp')) continue;
+      if (airborne(s) && (k.jumpable || s.airKind === 'ramp')) {
+        // Jumped over it: Gear hooks.
+        if (o.touched) continue;
+        if (o.kind === 'deadtree' && m.matchbook) {
+          o.touched = o.burning = o.hit = true;
+          stagger(g, 1);
+          g.events.push({ type: 'burn' });
+        } else if (o.kind === 'stump' && m.forager) {
+          o.touched = o.hit = true;
+          g.bonusTokens++;
+          s.boostT = Math.max(s.boostT, 1.5);
+          g.events.push({ type: 'forage' });
+        }
+        continue;
+      }
+      if (o.kind === 'dog' && m.goodBoy) {
+        o.hit = o.passed = true;
+        s.boostT = Math.max(s.boostT, 1);
+        g.events.push({ type: 'goodBoy' });
+        continue;
+      }
       if (k.effect === 'crash') return crash(g, o.kind, o);
       if (o.touched) continue;
       o.touched = true;
@@ -382,6 +388,7 @@ function updateSkier(g: Game, input: Input) {
         const pts = CFG.nearMissStyle * multiplier(g);
         g.skillStyle += pts;
         g.chain++;
+        if (m.nearMissBoost > 0) s.boostT = Math.max(s.boostT, m.nearMissBoost);
         g.events.push({ type: 'nearMiss', style: pts });
       }
     }
@@ -394,7 +401,7 @@ function updateYeti(g: Game) {
   const Y = CFG.yeti;
   const dt = CFG.dt;
   if (y.state === 'waiting') {
-    if (g.time < Y.grace) return;
+    if (g.time < graceFor(g)) return;
     y.state = 'chasing';
     y.x = s.x;
     y.y = s.y - Y.spawnBehind;
@@ -413,6 +420,11 @@ function updateYeti(g: Game) {
   // Leash: never more than 1.5 screens away, so you can stay ahead of it but never lose it.
   if (s.y - y.y > Y.leash) y.y = s.y - Y.leash;
   if (Math.abs(s.x - y.x) > Y.leash) y.x = s.x - Math.sign(s.x - y.x) * Y.leash;
+  if (y.stunT > 0) {
+    y.stunT = Math.max(0, y.stunT - dt);
+    y.vx = y.vy = 0;
+    return;
+  }
 
   const dx = s.x - y.x;
   const dy = s.y - y.y;
@@ -425,22 +437,23 @@ function updateYeti(g: Game) {
     y.x = s.x;
     y.y = s.y;
     y.vx = y.vy = 0;
+    g.result = 'eaten';
     g.events.push({ type: 'eaten' });
     return;
   }
   // Head straight for the skier, with separate caps downhill / across / uphill, then the hard pursuer cap.
-  let vx = d > 0 ? (dx / d) * Y.speed : 0;
-  let vy = d > 0 ? (dy / d) * Y.speed : 0;
+  const speed = yetiSpeedFor(g);
+  let vx = d > 0 ? (dx / d) * speed : 0;
+  let vy = d > 0 ? (dy / d) * speed : 0;
   vx = clamp(vx, -Y.cross, Y.cross);
-  vy = clamp(vy, -Y.uphill, Y.speed);
+  vy = clamp(vy, -Y.uphill, speed);
   const v = Math.hypot(vx, vy);
   if (v > Y.cap) {
     vx *= Y.cap / v;
     vy *= Y.cap / v;
   }
   // Don't overshoot on the last step.
-  const stepLen = v * dt;
-  if (stepLen > d && d > 0) {
+  if (v * dt > d && d > 0) {
     vx = dx / dt;
     vy = dy / dt;
   }

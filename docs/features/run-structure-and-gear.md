@@ -1,6 +1,6 @@
 # Run Structure & Gear — Feature Document
 
-> **Version:** v1.1 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.2 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > Turn a great one-minute descent into a 20–30 minute run where your choices compound. Gear should change *how* you ski (P2), and routes should trade risk for reward.
@@ -54,17 +54,19 @@ After each Slope or Black Diamond: choose 1 of 3 (Gear, Snack, or Tokens). Rarit
 |---|---|---|---|
 | Racing Skis | Skis | Tuck speed +15%; turning in a tuck is even wider | Tuck |
 | Twin Tips | Skis | You can land backwards; landing backwards scores ×2 trick Style | Trick |
-| Rocket Boots | Boots | The secret turbo: a 2 s ×2 speed burst, recharged by near misses | Tuck |
+| Rocket Boots | Boots | The secret turbo: every near miss fires a 1 s speed burst (×1.4 top speed) | Tuck |
 | Spring Boots | Boots | Jump from flat ground as high as off a ramp | Jump |
-| Ice Picks | Poles | Turn instantly once per jump (mid-air) | Trick |
+| Ice Picks | Poles | Turn three times faster in the air | Jump |
 | Matchbook | Charm | Dead trees you jump over burn and stagger the yeti by 1 s | Jump |
-| Mushroom Forager | Charm | Stumps become mushrooms when jumped (not only from uphill); eating one gives +1 Token and a short tuck boost | Jump |
+| Mushroom Forager | Charm | Jumping over a stump forages a mushroom: +1 Token and a 1.5 s speed boost | Jump |
 | Good Boy | Charm | Hitting a dog doesn't crash you; you get a 1 s speed boost instead. The dog is fine. | Crash |
 | Bubble Wrap | Charm | Crash downtime −50% | Crash |
 | Rubber Chicken | Charm | The first crash each slope makes you bounce instead (no crash) | Crash |
 | Lift Pass | Charm | Once per slope, grab a chairlift cable to skip 40 m forward | Utility |
 | Yeti Musk | Charm | Grace +3 s, but the yeti is 5% faster | Risk |
 | Whiteout Goggles | Charm | Fog and Night have no effect | Utility |
+
+**In M1:** the 10 Gear in the pool are Racing Skis, Rocket Boots, Spring Boots, Ice Picks, Matchbook, Mushroom Forager, Good Boy, Bubble Wrap, Rubber Chicken and Yeti Musk. Twin Tips, Lift Pass and Whiteout Goggles wait for backwards landings, chairlifts and Conditions.
 
 **Synergy test (P2):** every Gear must combine with at least two others into a noticeable build. "+X% stat" items are only allowed in a slot item that also changes how you ski.
 
@@ -110,7 +112,7 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 ## Implementation Priority (Levels of Quality)
 | Level | Content | Status |
 |---|---|---|
-| Core | Linear 3-mountain run, reward pick of 1 in 3 from 10 Gear, Tokens | Not started |
+| Core | Linear 3-mountain run, reward pick of 1 in 3 from 10 Gear, Tokens | M1 prototype (Tokens banked, nothing to spend them on until the Lodge) |
 | Expected | Route map, Lodge, Snacks, 30 Gear, Summits, save between slopes | Not started |
 | Desired | Events, Curses, 4 skiers, unlocks, Daily Seed | Not started |
 | Aspirational | 10 Altitudes, run history | Not started |
@@ -120,3 +122,4 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 |---|---|---|
 | v1.0 | 2026-10-17 | First draft |
 | v1.1 | 2026-10-17 | 6-row maps, Warming Hut, Altitude, Tokens ÷ 200 with worked example, combo scope, Retiree and Rental Skis changed to keep tuck speed fixed |
+| v1.2 | 2026-10-18 | M1: Rocket Boots, Ice Picks and Mushroom Forager reworded to what was built; the M1 Gear pool listed |

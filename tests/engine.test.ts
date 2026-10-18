@@ -6,23 +6,22 @@ import {
   NO_INPUT,
   type Obstacle,
   type ObstacleKind,
-  generateBand,
   newGame,
   step,
   style,
   yetiProximity,
 } from '../src/engine';
+import { modsFor } from '../src/gear';
+import { SLOPE, buildSlope } from '../src/slope';
 
 let nextId = 1;
 const ob = (kind: ObstacleKind, x: number, y: number): Obstacle => ({
-  id: nextId++, kind, x, y, x0: x, phase: 0, hit: false, touched: false, passed: false,
+  id: nextId++, kind, x, y, x0: x, phase: 0, hit: false, touched: false, passed: false, burning: false,
 });
 
-/** An empty slope with hand-placed obstacles. */
-function slope(obstacles: Obstacle[] = []): Game {
-  const g = newGame(1, { generate: false });
-  g.obstacles = obstacles;
-  return g;
+/** An endless empty slope with hand-placed obstacles, optionally with Gear. */
+function slope(obstacles: Obstacle[] = [], gear: string[] = []): Game {
+  return newGame(1, { obstacles, mods: modsFor(gear) });
 }
 
 const run = (g: Game, seconds: number, input: Input | ((g: Game) => Input) = NO_INPUT) => {
@@ -52,8 +51,9 @@ describe('rules the design depends on', () => {
 
 describe('determinism', () => {
   it('the slope is a pure function of the seed', () => {
-    expect(generateBand(42, 17)).toEqual(generateBand(42, 17));
-    expect(generateBand(42, 17)).not.toEqual(generateBand(43, 17));
+    const p = { length: 600, difficulty: 3, mountain: 0, yetiSpeed: 14, grace: 8 };
+    expect(buildSlope(42, p, CFG.tuck)).toEqual(buildSlope(42, p, CFG.tuck));
+    expect(buildSlope(42, p, CFG.tuck).obstacles).not.toEqual(buildSlope(43, p, CFG.tuck).obstacles);
   });
 
   it('the same seed and inputs replay identically', () => {
@@ -69,7 +69,7 @@ describe('determinism', () => {
 
   it('the start is clear inside the slope edges', () => {
     const g = newGame(99);
-    const inside = g.obstacles.filter((o) => Math.abs(o.x) < CFG.slopeHalfWidth && o.y < CFG.startClear);
+    const inside = g.obstacles.filter((o) => Math.abs(o.x) < SLOPE.halfWidth && o.y < SLOPE.startClear);
     expect(inside).toEqual([]);
   });
 });
@@ -172,3 +172,74 @@ describe('the yeti', () => {
     expect(g.over).toBe(true);
   });
 });
+
+describe('finish gate', () => {
+  it('crossing the finish ends the slope as cleared', () => {
+    const g = newGame(3, { obstacles: [], params: { length: 50, difficulty: 1, mountain: 0, yetiSpeed: 14, grace: 8 } });
+    run(g, 10, tuck);
+    expect(g.result).toBe('cleared');
+    expect(g.over).toBe(true);
+    expect(g.events.some((e) => e.type === 'finish')).toBe(true);
+  });
+});
+
+describe('gear', () => {
+  it('Spring Boots hops clear trees', () => {
+    const g = slope([ob('tree', 0, 13)], ['spring-boots']);
+    run(g, 1.5);
+    jumpOnce(g);
+    run(g, 1.5);
+    expect(g.skier.state).toBe('ski');
+    expect(g.skier.y).toBeGreaterThan(14);
+  });
+
+  it('Good Boy turns a dog into a boost', () => {
+    // The dog wanders: start it 2.5 m left so it's back in the middle when the skier arrives.
+    const dog = { ...ob('dog', 0, 12), x0: -2.5 };
+    const g = slope([dog], ['good-boy']);
+    run(g, 2);
+    expect(g.events.some((e) => e.type === 'goodBoy')).toBe(true);
+    expect(g.skier.state).toBe('ski');
+  });
+
+  it('Rubber Chicken bounces the first crash only', () => {
+    const g = slope([ob('tree', 0, 10), ob('tree', 0, 25)], ['rubber-chicken']);
+    run(g, 6);
+    expect(g.events.filter((e) => e.type === 'bounce')).toHaveLength(1);
+    expect(g.events.filter((e) => e.type === 'crash')).toHaveLength(1);
+  });
+
+  it('Bubble Wrap halves crash time', () => {
+    const g = slope([ob('tree', 0, 10)], ['bubble-wrap']);
+    run(g, 2);
+    expect(g.skier.state).toBe('crash');
+    expect(g.skier.crashT).toBeLessThanOrEqual(CFG.crashTime / 2);
+  });
+
+  it('Matchbook burns jumped dead trees and staggers the yeti, capped per slope', () => {
+    const trees = [60, 80, 100, 120, 140, 160, 180, 200].map((y) => ob('deadtree', 0, y));
+    const g = slope(trees, ['matchbook']);
+    run(g, CFG.yeti.grace + 0.5, (game) => ({ ...tuck, jump: game.skier.y > 50 && game.tick % 45 === 0 }));
+    run(g, 10, (game) => ({ ...tuck, jump: game.tick % 45 === 0 }));
+    expect(g.events.filter((e) => e.type === 'burn').length).toBeGreaterThan(0);
+    expect(g.staggerUsed).toBeLessThanOrEqual(CFG.yeti.staggerCap);
+  });
+
+  it('Mushroom Forager pays a Token per jumped stump', () => {
+    const g = slope([ob('stump', 0, 13)], ['mushroom-forager']);
+    run(g, 1.5);
+    jumpOnce(g);
+    run(g, 1);
+    expect(g.bonusTokens).toBe(1);
+  });
+
+  it('Yeti Musk delays the yeti but never breaks the pursuer cap', () => {
+    const g = slope([], ['yeti-musk']);
+    run(g, CFG.yeti.grace + 1, tuck);
+    expect(g.yeti.state).toBe('waiting');
+    const fast = newGame(1, { obstacles: [], mods: modsFor(['yeti-musk']), params: { length: Infinity, difficulty: 1, mountain: 2, yetiSpeed: 17.4, grace: 3 } });
+    run(fast, 30, tuck);
+    expect(Math.hypot(fast.yeti.vx, fast.yeti.vy)).toBeLessThanOrEqual(CFG.yeti.cap + 1e-9);
+  });
+});
+
