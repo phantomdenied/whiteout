@@ -66,7 +66,7 @@ const SNOW = [
 const EYE_TRAIL_S = 0.45;
 
 /** Night headlamp: cone half-angle (radians), reach and glow radius (meters), and how much of the dark the long throw lifts near and far. */
-const HEADLAMP = { halfAngle: 0.42, reach: 18, glow: 2.6, throwNear: 0.42, throwFar: 0.3 };
+const HEADLAMP = { halfAngle: 0.42, reach: 18, glow: 2.6, throwNear: 0.13, throwFar: 0.08 };
 
 /** Burning Man: smoky, ash-dusted snow. */
 const ASH = { snow: '#efe6dc', speck: '#cdbfb2' };
