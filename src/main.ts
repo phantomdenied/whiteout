@@ -6,6 +6,7 @@ import {
   CONDITIONS,
   type Game,
   type GameEvent,
+  TRICKS,
   distance,
   graceFor,
   multiplier,
@@ -136,7 +137,7 @@ const sound = new Sound();
 sound.setMuted(load(MUTE_KEY) === '1');
 
 const renderer = new Renderer(canvas);
-const controls = new Controls(app, () => game.skier.angle, onKey);
+const controls = new Controls(app, () => game.skier.angle, onKey, () => game.skier.air > 0);
 
 function initialSeed(): number {
   const param = params.get('seed');
@@ -170,7 +171,11 @@ function attractInput(g: Game) {
   const input = botInput(g, attractSloppy ? { lapses: 0.0007 } : {});
   const s = g.skier;
   if (s.state !== 'ski') return input;
-  if (s.air > 0) return { ...input, jump: (s.tricks === 0 || greedy) && s.airTotal - s.air > 0.08 };
+  if (s.air > 0) {
+    // The clean skier does one quick trick (anything fits in a hop if started early); the greedy one keeps going.
+    const go = (s.tricks === 0 || greedy) && s.airTotal - s.air > 0.08;
+    return { ...input, trick: go ? ((1 + Math.floor(Math.random() * 3)) as 1 | 2 | 3) : undefined };
+  }
   greedy = attractSloppy && Math.random() < 0.3;
   if (input.tuck && s.speed > 14 && Math.abs(s.angle) < 0.15 && Math.random() < 0.006) return { ...input, jump: true };
   return input;
@@ -418,7 +423,8 @@ function showTitle() {
       <dt>Steer</dt><dd>Drag left / right · ← →</dd>
       <dt>Tuck (faster)</dt><dd>Hold your thumb low · ↓</dd>
       <dt>Slow down</dt><dd>Drag up · ↑</dd>
-      <dt>Jump / trick</dt><dd>Flick up or tap · Space. Again in the air for a trick.</dd>
+      <dt>Jump</dt><dd>Double-tap · Space</dd>
+      <dt>Tricks (in the air)</dt><dd>Swipe up, left or right · Z X C. Land before the trick ends or you crash.</dd>
       <dt>Snack</dt><dd>Tap it, top right · 1–3</dd>
     </dl>
     <div class="actions">
@@ -827,7 +833,6 @@ function toast(text: string, warn = false) {
   el.addEventListener('animationend', () => el.remove());
 }
 
-const TRICK_NAMES = ['', 'Spread eagle', 'Double', 'Triple daffy'];
 const SNACK_TOAST: Record<SnackId, string> = { cocoa: 'Cocoa!', fish: 'Fish thrown', map: 'Map out', warmer: 'Warm hands' };
 
 const EVENT_SOUND: Partial<Record<GameEvent['type'], SoundName>> = {
@@ -852,7 +857,7 @@ function handle(e: GameEvent) {
       toast('Boing!');
       break;
     case 'land':
-      toast(`${TRICK_NAMES[e.tricks]} +${Math.round(e.style)}`);
+      toast(`${e.kinds.map((k) => TRICKS[k].name).join(' + ')} +${Math.round(e.style)}`);
       break;
     case 'safeLanding':
       toast('Stuck it');

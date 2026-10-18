@@ -29,9 +29,10 @@ export const CFG = {
   springAir: 1.1,
   rampAirMin: 0.7,
   rampAirPerCruise: 0.6,
-  trickTime: 0.25,
   maxTricks: 3,
-  trickStyle: [0, 50, 150, 400],
+  /** Trick Style × this for 1, 2 or 3 tricks in one jump; × varietyBonus more if no trick repeats. */
+  comboMult: [0, 1, 1.5, 2],
+  varietyBonus: 1.25,
   crashTime: 1.4,
   warmerCrashTime: 0.3,
   /** Slowdown factor for riding through moguls on the ground. */
@@ -120,6 +121,8 @@ export interface Skier {
   airTotal: number;
   airKind: 'hop' | 'ramp';
   tricks: number;
+  /** The tricks done on this jump, in order (the last one is the pose in progress while trickT > 0). */
+  trickKinds: TrickKind[];
   /** Seconds left in the current trick pose; landing while > 0 is a crash. */
   trickT: number;
   crashT: number;
@@ -159,8 +162,8 @@ export interface Wall {
 export type GameEvent =
   | { type: 'jump' }
   | { type: 'ramp' }
-  | { type: 'trick'; n: number }
-  | { type: 'land'; tricks: number; style: number }
+  | { type: 'trick'; n: number; kind: TrickKind }
+  | { type: 'land'; tricks: number; kinds: TrickKind[]; style: number }
   | { type: 'safeLanding' }
   | { type: 'crash'; kind: ObstacleKind | 'botched' }
   | { type: 'bounce' }
@@ -225,10 +228,28 @@ export interface Input {
   turn: number;
   tuck: boolean;
   brake: boolean;
-  /** Edge-triggered: true for the one tick the jump/trick was pressed. */
+  /** Edge-triggered: true for the one tick the jump was pressed (in the air it does a Spread Eagle). */
   jump: boolean;
+  /** Edge-triggered: a trick swiped this tick (in the air only). */
+  trick?: TrickKind;
   /** Edge-triggered: index of the Snack to use this tick. */
   snack?: number;
+}
+
+/** The three tricks: swipe up, left or right in the air. Longer poses score more and risk a botched landing. */
+export type TrickKind = 1 | 2 | 3;
+export const TRICKS: Record<TrickKind, { name: string; time: number; style: number }> = {
+  1: { name: 'Spread Eagle', time: 0.22, style: 40 },
+  2: { name: 'Helicopter', time: 0.3, style: 70 },
+  3: { name: 'Backflip', time: 0.38, style: 110 },
+};
+
+/** Style for landing these tricks cleanly, before Gear and the combo multiplier. */
+export function trickStyle(kinds: TrickKind[]): number {
+  if (!kinds.length) return 0;
+  const base = kinds.reduce((t, k) => t + TRICKS[k].style, 0);
+  const variety = kinds.length > 1 && new Set(kinds).size === kinds.length ? CFG.varietyBonus : 1;
+  return base * CFG.comboMult[Math.min(kinds.length, CFG.maxTricks)] * variety;
 }
 
 export const NO_INPUT: Input = { turn: 0, tuck: false, brake: false, jump: false };
@@ -265,7 +286,7 @@ export function newGame(seed: number, opts: GameOptions = {}): Game {
     time: 0,
     skier: {
       x: 0, y: 0, angle: 0, speed: 0, state: 'ski', tuck: false, brake: false,
-      air: 0, airTotal: 0, airKind: 'hop', tricks: 0, trickT: 0, crashT: 0, boostT: 0, tuckT: 0,
+      air: 0, airTotal: 0, airKind: 'hop', tricks: 0, trickKinds: [], trickT: 0, crashT: 0, boostT: 0, tuckT: 0,
     },
     yetis,
     // Avalanche slopes have no yeti; a never-moving stand-in keeps single-yeti code paths simple.
@@ -398,6 +419,7 @@ function crash(g: Game, kind: ObstacleKind | 'botched', o?: Obstacle) {
     s.speed *= 0.4;
     s.air = 0;
     s.tricks = 0;
+    s.trickKinds = [];
     s.trickT = 0;
     g.events.push({ type: 'bounce' });
     return;
@@ -408,6 +430,7 @@ function crash(g: Game, kind: ObstacleKind | 'botched', o?: Obstacle) {
   s.speed = 0;
   s.air = 0;
   s.tricks = 0;
+  s.trickKinds = [];
   s.trickT = 0;
   s.boostT = 0;
   s.tuckT = 0;
@@ -473,10 +496,12 @@ function updateSkier(g: Game, input: Input) {
       g.events.push({ type: 'jump' });
     }
   } else {
-    if (input.jump && s.tricks < CFG.maxTricks && s.trickT <= 0) {
+    const kind: TrickKind | undefined = input.trick ?? (input.jump ? 1 : undefined);
+    if (kind && s.tricks < CFG.maxTricks && s.trickT <= 0) {
       s.tricks++;
-      s.trickT = CFG.trickTime;
-      g.events.push({ type: 'trick', n: s.tricks });
+      s.trickKinds = [...s.trickKinds, kind];
+      s.trickT = TRICKS[kind].time;
+      g.events.push({ type: 'trick', n: s.tricks, kind });
     }
     s.trickT = Math.max(0, s.trickT - dt);
     s.air -= dt;
@@ -486,15 +511,17 @@ function updateSkier(g: Game, input: Input) {
         if (!m.safeBotch) return crash(g, 'botched');
         s.trickT = 0;
         s.tricks = 0;
+        s.trickKinds = [];
         g.events.push({ type: 'safeLanding' });
       } else if (s.tricks > 0) {
-        const pts = CFG.trickStyle[s.tricks] * m.trickMult * multiplier(g);
+        const pts = trickStyle(s.trickKinds) * m.trickMult * multiplier(g);
         g.skillStyle += pts;
         g.chain += s.tricks;
-        g.events.push({ type: 'land', tricks: s.tricks, style: pts });
+        g.events.push({ type: 'land', tricks: s.tricks, kinds: s.trickKinds, style: pts });
         if (m.trickStagger > 0) stagger(g, m.trickStagger);
       }
       s.tricks = 0;
+      s.trickKinds = [];
     }
   }
 
@@ -560,6 +587,7 @@ function updateSkier(g: Game, input: Input) {
         s.air = s.airTotal = (CFG.rampAirMin + CFG.rampAirPerCruise * Math.min(1.2, s.speed / CFG.cruise)) * m.airMult;
         s.airKind = 'ramp';
         s.tricks = 0;
+        s.trickKinds = [];
         g.events.push({ type: 'ramp' });
         boost(s, m.rampBoost);
         pay(g, m.rampTokens, 'Ramp Rat');

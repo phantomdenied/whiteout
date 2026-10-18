@@ -14,8 +14,16 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 - **Heading:** the skier points in one of 9 directions (hard left … straight down … hard right). Downhill speed depends on heading: straight down is fastest, across the slope is slow, and full sideways stops you (as in the original).
 - **Tuck:** about +50% top speed, but the heading changes one step slower. Tucking is how you outrun the yeti.
 - **Slow down:** drag up to snowplow: −50% speed. A sideways heading stops you quickly.
-- **Jump:** flick up. You're airborne for about 0.6 s (longer off ramps), passing over low obstacles (stumps, rocks, small dogs, moguls). Trees still hit you unless the jump is from a ramp.
-- **Tricks:** flick again in the air (up to 3 per jump, each a different pose). A clean landing scores Style; landing mid-trick is a crash.
+- **Jump:** double-tap. You're airborne for about 0.6 s (longer off ramps), passing over low obstacles (stumps, rocks, small dogs, moguls). Trees still hit you unless the jump is from a ramp.
+- **Tricks:** swipe in the air, up to 3 per jump. A clean landing scores Style; landing mid-trick is a crash. Swipes only count in the air; on the ground a fast sideways drag is steering.
+
+| Swipe | Trick | Pose time | Style |
+|---|---|---|---|
+| Up | Spread Eagle | 0.22 s | 40 |
+| Left | Helicopter | 0.30 s | 70 |
+| Right | Backflip | 0.38 s | 110 |
+
+Several tricks in one jump: the sum × 1.5 (two) or × 2 (three), and × 1.25 more if none repeats. A 0.6 s hop fits one trick, or two short ones started fast; three need a ramp or Spring Boots. Desktop: Space jumps (and does a Spread Eagle in the air), Z / X / C do the three tricks.
 - **Crash:** a hit sends you tumbling for 1.0 s, then 0.4 s getting up (with no control), then you restart from speed 0. Crashing has no other penalty; the cost is the time the yeti gains.
 - **Near miss:** passing within 0.5 m of an obstacle at speed scores Style and fills the whoosh meter (used by some Gear).
 
@@ -28,7 +36,7 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 | Tuck top speed | 18 m/s | Fixed: no Gear, Curse or skier lowers it. Only Conditions that slow pursuers by the same factor may (see [Yetis](yetis.md#numbers-first-pass)) |
 | Acceleration to cruise | ~1.5 s from 0 | |
 | Snowplow | −50% speed | |
-| Airtime | 0.6 s (flick), 1.0–1.4 s (ramp) | |
+| Airtime | 0.6 s (double-tap hop), 1.0–1.4 s (ramp) | |
 | Crash downtime | 1.4 s total | 1.0 s tumble + 0.4 s getting up |
 | Slope width | 54 m skiable (about 2 screens), bounded by a tree line | Beyond it are the Edge Yetis (later), see [Yetis](yetis.md#edge-yetis) |
 
@@ -82,7 +90,7 @@ Simulator (clean bot, hardest Black Diamond of each mountain): 100% under every 
 ### Control prototypes (M0)
 | Scheme | Steer | Tuck | Jump |
 |---|---|---|---|
-| **A. Relative drag** (default) | Horizontal offset from where the thumb touched down | Thumb low on the screen | Flick up |
+| **A. Relative drag** (default) | Horizontal offset from where the thumb touched down | Thumb low on the screen | Double-tap (tricks: swipe up / left / right in the air) |
 | B. Tilt | Tilt the phone | Hold anywhere | Tap |
 | C. Two-zone tap | Tap or hold the left/right half | Both halves | Swipe up |
 

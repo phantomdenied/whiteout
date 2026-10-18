@@ -10,6 +10,8 @@ import {
   step,
   style,
   yetiProximity,
+  TRICKS,
+  trickStyle,
   yetiSpeedFor,
 } from '../src/engine';
 import { modsFor } from '../src/gear';
@@ -129,7 +131,7 @@ describe('skiing', () => {
     run(clean, 0.1);
     jumpOnce(clean); // trick early in the hop: finishes before landing
     run(clean, 1);
-    expect(clean.events.find((e) => e.type === 'land')).toMatchObject({ tricks: 1, style: 50 });
+    expect(clean.events.find((e) => e.type === 'land')).toMatchObject({ tricks: 1, kinds: [1], style: 40 });
 
     const botched = slope();
     run(botched, 1);
@@ -252,7 +254,7 @@ describe('new gear', () => {
     run(g, 0.1);
     jumpOnce(g);
     run(g, 1);
-    expect(g.events.find((e) => e.type === 'land')).toMatchObject({ tricks: 1, style: 100 });
+    expect(g.events.find((e) => e.type === 'land')).toMatchObject({ tricks: 1, style: 80 });
   });
 
   it('Air Bag turns a botched landing into a safe one', () => {
@@ -461,5 +463,39 @@ describe('M4', () => {
     expect(yetiSpeedFor(high)).toBeCloseTo(yetiSpeedFor(base) * 1.1);
     const capped = newGame(1, { params: { length: 600, difficulty: 3, mountain: 0, yetiSpeed: 17, grace: 5, yetiMult: 1.5 } });
     expect(yetiSpeedFor(capped)).toBeLessThanOrEqual(CFG.yeti.cap);
+  });
+});
+
+describe('tricks', () => {
+  /** Hop, then do these tricks back to back as soon as each pose ends. Returns the events. */
+  function air(kinds: (1 | 2 | 3)[], airMult = 1) {
+    const g = slope([], airMult > 1 ? ['spring-boots'] : []);
+    run(g, 1);
+    g.events.length = 0;
+    jumpOnce(g);
+    const queue = [...kinds];
+    for (let i = 0; i < 120; i++) {
+      const s = g.skier;
+      const trick = s.air > 0 && s.trickT <= 0 && queue.length ? queue.shift() : undefined;
+      step(g, { ...NO_INPUT, trick });
+    }
+    return g.events;
+  }
+
+  it('each swipe is a different trick, worth more the longer it takes', () => {
+    expect(TRICKS[1].time).toBeLessThan(TRICKS[2].time);
+    expect(TRICKS[2].time).toBeLessThan(TRICKS[3].time);
+    for (const k of [1, 2, 3] as const) {
+      expect(air([k]).find((e) => e.type === 'land')).toMatchObject({ kinds: [k], style: TRICKS[k].style });
+    }
+  });
+
+  it('combos multiply, mixing tricks earns a bonus, and a combo too long for the hop botches', () => {
+    expect(trickStyle([1, 1])).toBe(80 * 1.5);
+    expect(trickStyle([1, 2])).toBe(110 * 1.5 * 1.25);
+    expect(trickStyle([1, 2, 3])).toBe(220 * 2 * 1.25);
+    expect(air([1, 3]).find((e) => e.type === 'crash')).toMatchObject({ kind: 'botched' });
+    // Spring Boots' long hop fits Spread Eagle + Backflip.
+    expect(air([1, 3], 2).find((e) => e.type === 'land')).toMatchObject({ kinds: [1, 3] });
   });
 });

@@ -50,7 +50,7 @@ This is the master document. It stays short and links out to Feature Documents f
 ### P3. One thumb, readable at speed
 > Fully playable one-handed in portrait, and every death is visible coming.
 
-- ✅ Steering by thumb drag, jump by flick; nothing needs two hands.
+- ✅ Steering by thumb drag, jump by double-tap, tricks by swipe; nothing needs two hands.
 - ✅ The camera shows more slope ahead than behind; hazards are telegraphed before they're on screen.
 - ❌ Off-screen instant deaths, tiny hitboxes, multi-finger gestures.
 
@@ -95,7 +95,7 @@ This is the master document. It stays short and links out to Feature Documents f
 | Steer | Drag thumb left/right anywhere in the lower half (relative, like a virtual stick) | ← → |
 | Tuck (go faster, turn wider) | Hold the thumb low on the screen | ↓ |
 | Slow down | Drag the thumb up past its start point | ↑ |
-| Jump / trick | Flick up; flick again in the air for a trick | Space; again in the air |
+| Jump / tricks | Double-tap; in the air swipe up, left or right for three different tricks | Space; Z / X / C |
 | Snack | Tap its icon (top right) | 1–3 |
 | Pause | Tap the pause icon | Esc / F3 |
 
@@ -147,7 +147,7 @@ Title ─▶ Skier pick ─▶ Route map ─▶ Slope ─▶ Reward pick ─▶ 
 │     more slope ahead      │  2/3 of the screen shows what's ahead
 │       than behind)        │
 │                           │
-│ - - - thumb zone - - - -  │  lower half: steer / tuck / flick
+│ - - - thumb zone - - - -  │  lower half: steer / tuck / tap / swipe
 └───────────────────────────┘
 ```
 - The yeti meter is the main tension cue, backed by sound (a roar on spawn, footsteps as it closes) and a screen-edge frost vignette.

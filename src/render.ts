@@ -1,6 +1,6 @@
 // Canvas renderer. Placeholder art, all drawn from shapes (original, not SkiFree's sprites).
 // The camera keeps the skier about 30% from the top so most of the screen shows the slope ahead.
-import { CFG, type Game, type Obstacle, type Yeti, type YetiLook, airborne, yetiProximity } from './engine';
+import { CFG, type Game, type Obstacle, TRICKS, type Yeti, type YetiLook, airborne, yetiProximity } from './engine';
 import { SLOPE } from './slope';
 
 const C = {
@@ -500,13 +500,24 @@ export class Renderer {
       ctx.restore();
       return;
     }
+    // Trick poses: Spread Eagle stretches out wide, Helicopter spins flat, Backflip flips over (squash through zero).
+    const kind = s.trickT > 0 ? s.trickKinds[s.trickKinds.length - 1] : undefined;
+    if (kind) {
+      const p = 1 - s.trickT / TRICKS[kind].time;
+      if (kind === 1) ctx.scale(1 + 0.7 * Math.sin(p * Math.PI), 1 - 0.15 * Math.sin(p * Math.PI));
+      else if (kind === 2) ctx.rotate(p * Math.PI * 2);
+      else {
+        ctx.translate(0, -u * 0.9);
+        const c = Math.cos(p * Math.PI * 2);
+        ctx.scale(1, (c < 0 ? -1 : 1) * Math.max(0.25, Math.abs(c)));
+        ctx.translate(0, u * 0.9);
+      }
+    }
     // Skis point along the heading: angle 0 = straight down the screen.
     ctx.save();
     ctx.rotate(-s.angle);
-    this.skiPair(u, 1, false);
+    this.skiPair(u, 1, kind === 1);
     ctx.restore();
-    const trickSpin = s.trickT > 0 ? (1 - s.trickT / CFG.trickTime) * Math.PI * 2 : 0;
-    ctx.rotate(trickSpin);
     this.body(u, s.tuck, s.angle);
     ctx.restore();
   }

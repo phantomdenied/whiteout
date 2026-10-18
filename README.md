@@ -21,9 +21,9 @@ See the [design document](docs/GDD.md).
 
 ## Play
 - **Drag** left/right anywhere to steer (relative to where your thumb lands). **Hold your thumb low** to tuck (faster, wider turns). **Drag up** to slow down.
-- **Flick up** or **tap** to jump; flick/tap again in the air for a trick (up to 3). Land mid-trick and you crash.
+- **Double-tap** to jump. In the air, **swipe up** (Spread Eagle), **left** (Helicopter) or **right** (Backflip) for a trick, up to 3 per jump; longer tricks score more, mixing them scores a bonus. Land mid-trick and you crash.
 - **Snacks:** tap one (top right) to use it. Desktop: 1–3.
-- Desktop: ← → steer, ↓ tuck, ↑ slow, Space jump/trick, 1–4 pick a reward, Esc pause, Enter continue, M sound on/off.
+- Desktop: ← → steer, ↓ tuck, ↑ slow, Space jump, Z / X / C tricks, 1–4 pick a reward, Esc pause, Enter continue, M sound on/off.
 - The yeti comes after a few seconds. It's faster than cruising and slower than a clean tuck. Crashes cost 1.4 s, and that's how it catches you.
 - Hop over rocks, stumps, dead trees, dogs and moguls. Trees need a ramp (or Spring Boots).
 - Add `?seed=123` to replay a run, `?bot` to let the clean-skier bot drive, `?mountain=1&row=6` to start further in (0-based; row 6 is the Summit).
