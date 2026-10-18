@@ -48,7 +48,7 @@ export function slopeParams(slope: number): SlopeParams {
   const k = slope % SLOPES_PER_MOUNTAIN;
   return {
     length: 600 + k * 50 + mountain * 150,
-    difficulty: Math.round((1.5 + slope * 0.6) * 10) / 10,
+    difficulty: Math.round((2.5 + slope * 0.5) * 10) / 10,
     mountain,
     yetiSpeed: CFG.yeti.speed + mountain,
     grace: Math.round((8 - (slope / (TOTAL_SLOPES - 1)) * 4) * 10) / 10,

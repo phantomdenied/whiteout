@@ -1,6 +1,6 @@
 # Descent & Controls — Feature Document
 
-> **Version:** v1.2 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.3 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > Skiing should feel good on its own, before any yeti or Gear. Thirty seconds on a phone should be enough to carve, tuck, and jump on purpose.
@@ -50,8 +50,9 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 ### Slope generation
 - A slope is stitched from **chunks**: segments 40 m tall, hand-drawn as 30 × 20 text grids (one cell = 2 m) in `src/chunks.ts` and tagged with difficulty (1–10). Theme and feature tags come later.
 - **Layout:** a 30 m clear run-in, then chunks separated by 8 m of open snow (seams, so a corridor that exits on one side can reach the next entry), randomly mirrored. A tree line stands just outside the skiable width on both sides. Each mountain swaps a share of trees for dead trees (8% / 25% / 15%).
-- **Generation:** a seeded RNG picks chunks to fill the slope's length under a **difficulty budget** that rises within the slope (warm-up −2, crux +1, final sprint ±0) and with each slope of the run. No chunk repeats back to back, and no two chunks of difficulty 8+ appear back to back.
-- **Guarantees (validator):** a path search finds the cheapest clean line from the start to the finish gate. The line keeps hitbox + 0.6 m from every crash obstacle and ramp (dogs: their whole wander range), turns at most 45°, and changes its sideways rate gradually so it can actually be skied. A clean tuck along it must keep the yeti at least 12 m away. A layout that fails is rejected and re-rolled (up to 24 tries, then a cleared corridor as a fallback; in tests no slope needs the fallback).
+- **Scatter:** loose trees, rocks, stumps and the odd mogul or ramp fill the open snow, at least 2.2 m from anything already placed. It's heaviest on easy slopes (about 0.03 per m² at difficulty 2.5) and fades to nothing by difficulty 5, whose dense chunks already set the challenge. Busy chunks get proportionally less, so their designed corridors stay readable. Obstacles per 100 m of slope: about 150–200 on mountain 1, 250–360 on mountain 2, 340–390 on mountain 3.
+- **Generation:** a seeded RNG picks chunks to fill the slope's length under a **difficulty budget** that rises within the slope (warm-up −1 for the first 15%, crux +1, final sprint ±0) and with each slope of the run. No chunk repeats back to back, and no two chunks of difficulty 8+ appear back to back.
+- **Guarantees (validator):** a path search finds the cheapest clean line from the start to the finish gate. The line keeps hitbox + 0.75 m from every crash obstacle and ramp (dogs: their whole wander range), turns at most 45°, and changes its sideways rate gradually so it can actually be skied. A clean tuck along it must keep the yeti at least 12 m away. A layout that fails is rejected and re-rolled (up to 24 tries, then a cleared corridor as a fallback; in tests no slope needs the fallback).
 - **Validation:** the simulator's "clean skier" bot (`src/bot.ts`) follows the validator's line in a tuck without jumping, and must clear every generated slope without Gear (`npm run sim`, plus a test). A "cruiser" bot that never tucks must get caught.
 
 ### Conditions (whole-slope modifiers; Mountains 2–3)
@@ -101,3 +102,4 @@ Pick by playtest: time to clear the first slope, crash rate, self-reported feel.
 | v1.0 | 2026-10-17 | First draft |
 | v1.1 | 2026-10-17 | Avalanche speed defined; tuck speed made fixed |
 | v1.2 | 2026-10-18 | M1: chunk grid format, seams, edge tree line, validator rules, bots; slope width 54 m |
+| v1.3 | 2026-10-18 | Playtest: mountain 1 too sparse. Added scatter, smaller warm-up dip, line clearance 0.75 m |

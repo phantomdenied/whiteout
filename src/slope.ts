@@ -74,13 +74,23 @@ const PITCH = CHUNK_H + SEAM;
 const MAX_ATTEMPTS = 24;
 /** Share of trees that are dead (jumpable, burnable) on each mountain. */
 const DEAD_SHARE = [0.08, 0.25, 0.15];
+/**
+ * Loose obstacles per m² of open snow. Heaviest on easy slopes, whose chunks are mostly open, and
+ * thinning on hard slopes, whose dense chunks already set the challenge.
+ */
+const SCATTER_BASE = 0.06;
+const SCATTER_PER_DIFFICULTY = -0.012;
+/** A chunk with this many obstacles gets no scatter (its corridors are designed). */
+const SCATTER_FULL_CHUNK = 150;
+/** Scatter keeps this far from anything already placed, so it never seals a designed gap. */
+const SCATTER_CLEARANCE = 2.2;
 const CELL_KIND: Record<string, ObstacleKind> = { T: 'tree', D: 'deadtree', r: 'rock', s: 'stump', m: 'moguls', R: 'ramp', d: 'dog' };
 
 /** Validator tuning: how much room a clean line keeps, and how fast it can traverse. */
 export const LINE = {
   col: 0.5,
   /** Extra clearance beyond the hitbox. */
-  margin: 0.6,
+  margin: 0.75,
   /** Max sideways meters per meter downhill (45°). */
   maxShift: 1,
   /** The yeti must never get closer than this to a skier holding the line in a tuck. */
@@ -117,7 +127,7 @@ export function pickChunks(rng: Rng, params: SlopeParams): Chunk[] {
   let prev: Chunk | null = null;
   for (let y = SLOPE.startClear; y + CHUNK_H <= end; y += PITCH) {
     const p = (y - SLOPE.startClear) / Math.max(1, end - SLOPE.startClear);
-    const target = clamp(params.difficulty + (p < 0.2 ? -2 : p < 0.75 ? 1 : 0), 1, 10);
+    const target = clamp(params.difficulty + (p < 0.15 ? -1 : p < 0.75 ? 1 : 0), 1, 10);
     const ok = (c: Chunk) => c !== prev && !(prev && prev.difficulty >= 8 && c.difficulty >= 8);
     let pool = CHUNKS.filter((c) => ok(c) && Math.abs(c.difficulty - target) <= 1);
     if (!pool.length) {
@@ -138,8 +148,12 @@ function layout(rng: Rng, params: SlopeParams): { obstacles: Obstacle[]; chunks:
 
   const chunks = pickChunks(rng, params);
   const dead = DEAD_SHARE[params.mountain] ?? 0.1;
+  // Regions of the slope and how much scatter each takes: chunks by how busy they are, seams fully.
+  const regions: { y0: number; y1: number; share: number }[] = [];
   chunks.forEach((chunk, i) => {
     const y0 = SLOPE.startClear + i * PITCH;
+    const count = chunk.rows.join('').replace(/\./g, '').length;
+    regions.push({ y0, y1: y0 + CHUNK_H, share: Math.max(0, 1 - count / SCATTER_FULL_CHUNK) }, { y0: y0 + CHUNK_H, y1: y0 + PITCH, share: 1 });
     const mirror = rng() < 0.5;
     chunk.rows.forEach((row, r) => {
       for (let c = 0; c < CHUNK_COLS; c++) {
@@ -152,6 +166,46 @@ function layout(rng: Rng, params: SlopeParams): { obstacles: Obstacle[]; chunks:
       }
     });
   });
+
+  // Scatter: loose trees, rocks and stumps in the open snow, so no slope is an empty meadow.
+  const length = Number.isFinite(params.length) ? params.length : SLOPE.startClear + PITCH * 40;
+  const lastY = SLOPE.startClear + chunks.length * PITCH;
+  if (lastY < length) regions.push({ y0: lastY, y1: length, share: 1 });
+  const grid = new Map<string, Obstacle[]>();
+  const key = (x: number, y: number) => `${Math.floor(x / SCATTER_CLEARANCE)},${Math.floor(y / SCATTER_CLEARANCE)}`;
+  for (const o of obstacles) {
+    const k = key(o.x0, o.y);
+    grid.set(k, [...(grid.get(k) ?? []), o]);
+  }
+  const clear = (x: number, y: number) => {
+    const gx = Math.floor(x / SCATTER_CLEARANCE);
+    const gy = Math.floor(y / SCATTER_CLEARANCE);
+    for (let i = gx - 1; i <= gx + 1; i++) {
+      for (let j = gy - 1; j <= gy + 1; j++) {
+        for (const o of grid.get(`${i},${j}`) ?? []) {
+          const reach = SCATTER_CLEARANCE + (o.kind === 'dog' ? SLOPE.dogWander : 0) + (o.kind === 'moguls' || o.kind === 'ramp' ? 1 : 0);
+          if (Math.hypot(Math.max(0, Math.abs(o.x0 - x)), o.y - y) < reach) return false;
+        }
+      }
+    }
+    return true;
+  };
+  const density = Math.max(0, SCATTER_BASE + SCATTER_PER_DIFFICULTY * params.difficulty);
+  for (const reg of regions) {
+    const count = Math.floor((reg.y1 - reg.y0) * SLOPE.halfWidth * 2 * density * reg.share + rng());
+    for (let n = 0; n < count; n++) {
+      const x = (rng() * 2 - 1) * (SLOPE.halfWidth - 1.5);
+      const y = reg.y0 + rng() * (reg.y1 - reg.y0);
+      const r = rng();
+      let kind: ObstacleKind = r < 0.68 ? 'tree' : r < 0.82 ? 'rock' : r < 0.94 ? 'stump' : r < 0.97 ? 'moguls' : 'ramp';
+      if (kind === 'tree' && rng() < dead) kind = 'deadtree';
+      if (!clear(x, y)) continue;
+      add(kind, x, y);
+      const o = obstacles[obstacles.length - 1];
+      const k = key(x, y);
+      grid.set(k, [...(grid.get(k) ?? []), o]);
+    }
+  }
 
   // Edge: a tree line just outside the skiable width, then open forest beyond it.
   const end = Number.isFinite(params.length) ? params.length + 80 : SLOPE.startClear + PITCH * 40;
