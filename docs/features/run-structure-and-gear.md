@@ -1,6 +1,6 @@
 # Run Structure & Gear — Feature Document
 
-> **Version:** v1.3 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.4 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > Turn a great one-minute descent into a 20–30 minute run where your choices compound. Gear should change *how* you ski (P2), and routes should trade risk for reward.
@@ -8,7 +8,7 @@
 ## Core Mechanics
 
 ### Run shape
-**Built in M2 (no route map yet):** each mountain is a fixed line: Slope, Slope, Lodge, Slope, Slope, Lodge, Summit. That is the row pattern below with one node per row; branching, Warming Huts, Events and Black Diamonds arrive with the route map in M3. Runs save between stages (Continue on the title screen).
+**Built in M3:** the route map below, per mountain: six rows of 2–3 nodes plus the Summit. Slope rows hold Slopes and Black Diamonds (30% chance each node, at least one Slope per row); the first Stop row always has a Lodge, the second always a Warming Hut, and the rest are Huts, Lodges or Events. Each node links to the nodes roughly below it, so paths branch and rejoin. Every route is 4 descents and 2 stops per mountain, 15 descents in all. Runs save between nodes (Continue on the title screen).
 
 ```
 Skier pick ─▶ Mountain 1 map ─▶ … ─▶ Summit 1 ─▶ Mountain 2 map ─▶ … ─▶ Summit 2 ─▶ Mountain 3 ─▶ Summit 3 = WIN
@@ -21,10 +21,10 @@ Skier pick ─▶ Mountain 1 map ─▶ … ─▶ Summit 1 ─▶ Mountain 2 ma
 | Node | What happens |
 |---|---|
 | **Slope** | A normal descent, then a reward pick |
-| **Black Diamond** | Difficulty +2 and a random Condition. A better reward pick (one rare guaranteed) and ×1.5 Tokens. |
+| **Black Diamond** | Difficulty +1.5 (max 9), 100 m longer, and always a Condition. The reward pick guarantees a rare, and Tokens pay ×1.5. (+2 made mountain 3's Black Diamonds too hard in the simulator.) |
 | **Lodge** | Shop: 3 Gear, 2 Snacks, 1 service (sell Gear, remove a Curse, reroll the shop) |
-| **Warming Hut** | Rest: refill Snacks to capacity, or remove a Curse, or upgrade one Gear |
-| **Event** | A one-screen choice with a tradeoff, e.g. "Ski the closed run: +2 Gear picks, gain a Curse" |
+| **Warming Hut** | Pick one: fill every empty Snack slot, remove your oldest Curse, or upgrade a random Gear to the next rarity |
+| **Event** | A one-screen choice with a tradeoff (8 built, no repeats within a mountain): The closed run, A lost wallet, Ski swap, The hot tub, A vending machine, Ski patrol, Yeti tracks, The old pro. Choices that cost Tokens or need a Curse/Gear are disabled when they would do nothing |
 
 Each map's Stop rows include at least one Lodge and at least one Warming Hut.
 
@@ -75,16 +75,26 @@ Simulator check (`npm run sim`, clean bot, which never jumps): a tuck build (Rac
 | Hand Warmer | The next crash takes 0.3 s |
 
 ### Curses
-These come from Events and some Black Diamonds and stay until removed (at the Lodge or Warming Hut). Examples: "Squeaky Boots" (the yeti hears you: grace −2 s, never below the 3 s minimum); "Rental Skis" (turning one step slower). Curses never lower tuck speed (see [Yetis](yetis.md#numbers-first-pass)).
+These come from Events (and stay until removed at a Warming Hut or by an Event). Curses never lower tuck speed (see [Yetis](yetis.md#numbers-first-pass)). Built in M3:
+
+| Curse | Effect |
+|---|---|
+| Squeaky Boots | The yeti shows up 2 s sooner (never below the 3 s minimum) |
+| Rental Skis | Every kind of turn 25% slower |
+| Wet Socks | Crashes 30% longer |
+| Heavy Pack | Pick up speed 30% slower |
+| Frozen Zipper | One fewer Snack slot |
+| Yeti Scent | The yeti runs 4% faster (still under the cap) |
 
 ### Starting skiers
-Each skier is a starting kit with a boon and a bane, the same idea as Spindle's starting decks.
+Each skier is a starting kit with a boon and a bane, the same idea as Spindle's starting decks. In M3 all four are available from the start; the unlock conditions arrive with meta progression in M4.
+
 | Skier | Boon | Bane | Unlock |
 |---|---|---|---|
 | **The Rookie** | Starts with Bubble Wrap | — | Default |
-| **The Snowboarder** | A trick on every jump is free (no crash if you land mid-trick) | Can't snowplow | Clear Mountain 1 |
+| **The Snowboarder** | Landing mid-trick never crashes you | Can't snowplow | Clear Mountain 1 |
 | **The Retiree** | Starts with Rocket Boots (the secret turbo) | Crash downtime +50% | Find the mushroom secret |
-| **The Dog** | Tiny hitbox; jumps everything except trees | No Skis slot | Hit 50 dogs |
+| **The Dog** | Hitbox 55% of normal; hops 20% longer | No Skis slot (Skis are never offered) | Hit 50 dogs |
 
 ### Meta progression
 - Unlocks add **options** (skiers, Gear in the pool, Conditions, Daily Seed), never raw power. P5: a skilled first-time player can win.
@@ -95,7 +105,7 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 |---|---|
 | Tokens per average slope | ~8–12 |
 | Lodge prices | Common Gear 6, Uncommon 10, Rare 16, Snack 3, Reroll 2 (+1 each); selling pays half. Lowered from 8/14/22/4/3 in M2: without tricks a skier earns 3–6 Tokens per descent |
-| Run length | 15 descents (12 slopes + 3 Summits) at ~1 min, plus 6 stops and menus ≈ 20–30 min |
+| Run length | 15 descents (12 slopes or Black Diamonds + 3 Summits). Simulated skiing time for a full clear is about 14 min (descents average 40 s on mountain 1, 55 s on mountain 2, 65 s on mountain 3, 73 s per Summit, plus ~10 s per Black Diamond). Add roughly 20 menu screens (map, rewards, stops) at 15–30 s each: about 20–25 min. Needs confirming in playtests |
 
 ## Player Experience
 - **Intended:** "One more run." Builds you name ("the dog-crash build"), route decisions that feel like bets.
@@ -120,3 +130,4 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 | v1.1 | 2026-10-17 | 6-row maps, Warming Hut, Altitude, Tokens ÷ 200 with worked example, combo scope, Retiree and Rental Skis changed to keep tuck speed fixed |
 | v1.2 | 2026-10-18 | M1: Rocket Boots, Ice Picks and Mushroom Forager reworded to what was built; the M1 Gear pool listed |
 | v1.3 | 2026-10-18 | M2: the 30 Gear, linear stage pattern, lower Lodge prices, save |
+| v1.4 | 2026-10-18 | M3: route map, Black Diamonds (+1.5 difficulty, cap 9), Warming Hut options, 8 Events, 6 Curses, 4 skiers |

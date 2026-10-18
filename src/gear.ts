@@ -18,6 +18,10 @@ export interface Mods {
   /** Moguls don't slow you. */
   mogulProof: boolean;
   hikeMult: number;
+  /** Snowboarder: no snowplow. */
+  noBrake: boolean;
+  /** Skier hitbox radius multiplier (the Dog is small). */
+  hitboxMult: number;
   // Air
   /** Hops are as big as ramp jumps (and clear trees). */
   springHop: boolean;
@@ -72,6 +76,8 @@ export const BASE_MODS: Mods = {
   tuckStreakBoost: 0,
   mogulProof: false,
   hikeMult: 1,
+  noBrake: false,
+  hitboxMult: 1,
   springHop: false,
   airMult: 1,
   trickMult: 1,
@@ -271,6 +277,60 @@ export const GEAR: Gear[] = [
 ];
 
 export const SLOT_LIMIT: Record<Slot, number> = { skis: 1, boots: 1, poles: 1, charm: 5 };
+
+// ---------- Curses ----------
+// Negative modifiers from Events and Black Diamonds, kept until removed at a Warming Hut or an Event.
+// They never lower tuck speed (yetis.md: the pursuer rule).
+
+export interface Curse {
+  id: string;
+  name: string;
+  text: string;
+  apply: (m: Mods) => void;
+}
+
+export const CURSES: Curse[] = [
+  { id: 'squeaky-boots', name: 'Squeaky Boots', text: 'The yeti hears you coming: it shows up 2 seconds sooner.', apply: (m) => { m.graceAdd -= 2; } },
+  { id: 'rental-skis', name: 'Rental Skis', text: 'Every kind of turn is 25% slower.', apply: (m) => { m.turnMult *= 0.75; m.tuckTurnMult *= 0.75; } },
+  { id: 'wet-socks', name: 'Wet Socks', text: 'Crashes keep you down 30% longer.', apply: (m) => { m.crashTimeMult *= 1.3; } },
+  { id: 'heavy-pack', name: 'Heavy Pack', text: 'You pick up speed 30% slower.', apply: (m) => { m.accelMult *= 0.7; } },
+  { id: 'frozen-zipper', name: 'Frozen Zipper', text: 'One fewer Snack slot.', apply: (m) => { m.snackSlots -= 1; } },
+  { id: 'yeti-scent', name: 'Yeti Scent', text: 'The yeti runs 4% faster.', apply: (m) => { m.yetiSpeedMult *= 1.04; } },
+];
+
+export function curseById(id: string): Curse {
+  const c = CURSES.find((x) => x.id === id);
+  if (!c) throw new Error(`unknown curse ${id}`);
+  return c;
+}
+
+// ---------- Starting skiers ----------
+
+export type SkierId = 'rookie' | 'snowboarder' | 'retiree' | 'dog';
+
+export const SKIERS: Record<SkierId, { name: string; boon: string; bane: string; gear: string[]; apply: (m: Mods) => void; slots?: Partial<Record<Slot, number>> }> = {
+  rookie: {
+    name: 'The Rookie', boon: 'Starts with Bubble Wrap.', bane: 'None.',
+    gear: ['bubble-wrap'], apply: () => {},
+  },
+  snowboarder: {
+    name: 'The Snowboarder', boon: 'Landing mid-trick never crashes you.', bane: "Can't snowplow to slow down.",
+    gear: [], apply: (m) => { m.safeBotch = true; m.noBrake = true; },
+  },
+  retiree: {
+    name: 'The Retiree', boon: 'Starts with Rocket Boots, the secret turbo.', bane: 'Crashes keep you down 50% longer.',
+    gear: ['rocket-boots'], apply: (m) => { m.crashTimeMult *= 1.5; },
+  },
+  dog: {
+    name: 'The Dog', boon: 'Tiny: half the hitbox, and hops 20% longer.', bane: 'No Skis slot.',
+    gear: [], apply: (m) => { m.hitboxMult *= 0.55; m.airMult *= 1.2; }, slots: { skis: 0 },
+  },
+};
+export const SKIER_IDS = Object.keys(SKIERS) as SkierId[];
+
+export const slotLimit = (slot: Slot, skier: SkierId = 'rookie') => SKIERS[skier].slots?.[slot] ?? SLOT_LIMIT[slot];
+/** Gear this skier can't wear at all (the Dog has no Skis slot). */
+export const canWear = (id: string, skier: SkierId = 'rookie') => slotLimit(gearById(id).slot, skier) > 0;
 export const SLOT_LABEL: Record<Slot, string> = { skis: 'Skis', boots: 'Boots', poles: 'Poles', charm: 'Charm' };
 export const PRICE: Record<Rarity, number> = { common: 6, uncommon: 10, rare: 16 };
 
@@ -280,21 +340,26 @@ export function gearById(id: string): Gear {
   return g;
 }
 
-export function modsFor(ids: readonly string[]): Mods {
+/** Mods from Gear, then Curses, then the starting skier. */
+export function modsFor(ids: readonly string[], curses: readonly string[] = [], skier?: SkierId): Mods {
   const m = { ...BASE_MODS };
   for (const id of ids) gearById(id).apply(m);
+  for (const id of curses) curseById(id).apply(m);
+  if (skier) SKIERS[skier].apply(m);
+  m.snackSlots = Math.max(0, m.snackSlots);
   return m;
 }
 
 /** Adding this gear would push out an item already in its slot (the oldest one when the slot is full). */
-export function displaced(owned: readonly string[], id: string): string | null {
+export function displaced(owned: readonly string[], id: string, skier?: SkierId): string | null {
   const slot = gearById(id).slot;
   const same = owned.filter((o) => gearById(o).slot === slot);
-  return same.length >= SLOT_LIMIT[slot] ? same[0] : null;
+  return same.length >= slotLimit(slot, skier) ? same[0] ?? null : null;
 }
 
-export function addGear(owned: readonly string[], id: string): string[] {
-  const out = displaced(owned, id);
+export function addGear(owned: readonly string[], id: string, skier?: SkierId): string[] {
+  if (!canWear(id, skier)) return [...owned];
+  const out = displaced(owned, id, skier);
   return [...owned.filter((o) => o !== out), id];
 }
 

@@ -2,9 +2,9 @@
 // step() advances one fixed 60 Hz tick and mutates the state in place (it runs 60 times a second);
 // determinism comes from the seed plus the input sequence, so a run replays exactly.
 import { BASE_MODS, type Mods, type SnackId } from './gear';
-import { BOSS_HOLD, type BossKind, KINDS, type Obstacle, type ObstacleKind, SLOPE, type SlopeParams, buildSlope } from './slope';
+import { BOSS_HOLD, type BossKind, CONDITIONS, KINDS, type Obstacle, type ObstacleKind, SLOPE, type SlopeParams, buildSlope } from './slope';
 
-export { type BossKind, KINDS, type Obstacle, type ObstacleKind } from './slope';
+export { type BossKind, CONDITIONS, type Condition, KINDS, type Obstacle, type ObstacleKind } from './slope';
 
 /** All tuning in one place. Units are meters and seconds; +y is downhill, x = 0 is the slope's center line. */
 export const CFG = {
@@ -147,6 +147,8 @@ export interface Yeti {
 }
 
 export interface Wall {
+  /** An Avalanche Condition's wall appears (40 m back) only when the grace ends; the Old One's waits in view. */
+  armed: boolean;
   y: number;
   v: number;
   start: number;
@@ -246,9 +248,13 @@ export function newGame(seed: number, opts: GameOptions = {}): Game {
   const mods = opts.mods ?? BASE_MODS;
   const slope = opts.obstacles ? { obstacles: [...opts.obstacles].sort((a, b) => a.y - b.y), line: null } : buildSlope(seed, params, CFG.tuck);
   const boss = params.boss ? BOSSES[params.boss] : null;
+  const cond = params.condition ? CONDITIONS[params.condition] : null;
   const yetis = boss
     ? boss.yetis.map((b) => makeYeti(b.look, b.speed, b.cross, b.dx, 'holding'))
-    : [makeYeti('yeti', params.yetiSpeed, CFG.yeti.cross, 0, 'waiting')];
+    : cond?.wall ? [] : [makeYeti('yeti', params.yetiSpeed, CFG.yeti.cross, 0, 'waiting')];
+  const wall: Wall | null = boss?.wall
+    ? { armed: true, y: CFG.yeti.wallHold, v: 0, ...boss.wall }
+    : cond?.wall ? { armed: false, y: -Infinity, v: 0, ...cond.wall } : null;
   return {
     seed: seed >>> 0,
     params,
@@ -260,8 +266,9 @@ export function newGame(seed: number, opts: GameOptions = {}): Game {
       air: 0, airTotal: 0, airKind: 'hop', tricks: 0, trickT: 0, crashT: 0, boostT: 0, tuckT: 0,
     },
     yetis,
-    yeti: yetis[0],
-    wall: boss?.wall ? { y: CFG.yeti.wallHold, v: 0, ...boss.wall } : null,
+    // Avalanche slopes have no yeti; a never-moving stand-in keeps single-yeti code paths simple.
+    yeti: yetis[0] ?? makeYeti('yeti', 0, 0, 0, 'waiting'),
+    wall,
     obstacles: slope.obstacles,
     line: slope.line,
     snacks: [...(opts.snacks ?? [])],
@@ -288,9 +295,10 @@ export const tokens = (g: Game) =>
   Math.floor(style(g) / CFG.styleRate) + g.bonusTokens + (g.result === 'cleared' ? g.mods.finishTokens : 0);
 export const airborne = (s: Skier) => s.air > 0;
 export const graceFor = (g: Game) => Math.max(CFG.yeti.minGrace, g.params.grace + g.mods.graceAdd);
-export const speedOf = (g: Game, y: Yeti) => Math.min(CFG.yeti.cap, y.speed * g.mods.yetiSpeedMult);
+export const condition = (g: Game) => (g.params.condition ? CONDITIONS[g.params.condition] : null);
+export const speedOf = (g: Game, y: Yeti) => Math.min(CFG.yeti.cap, y.speed * g.mods.yetiSpeedMult * (condition(g)?.yetiMult ?? 1));
 /** The fastest pursuer on this slope, after Gear. */
-export const yetiSpeedFor = (g: Game) => Math.max(...g.yetis.map((y) => speedOf(g, y)));
+export const yetiSpeedFor = (g: Game) => Math.max(g.wall?.max ?? 0, ...g.yetis.map((y) => speedOf(g, y)));
 
 /** 0 when nothing is chasing or it's a full leash away, 1 when it's on you. */
 export function yetiProximity(g: Game): number {
@@ -301,7 +309,7 @@ export function yetiProximity(g: Game): number {
     const d = Math.hypot(g.skier.x - y.x, g.skier.y - y.y);
     p = Math.max(p, 1 - Math.min(1, d / CFG.yeti.leash));
   }
-  if (g.wall) p = Math.max(p, 1 - Math.min(1, (g.skier.y - g.wall.y) / CFG.yeti.leash));
+  if (g.wall?.armed) p = Math.max(p, 1 - Math.min(1, (g.skier.y - g.wall.y) / CFG.yeti.leash));
   return p;
 }
 
@@ -392,7 +400,7 @@ function crash(g: Game, kind: ObstacleKind | 'botched', o?: Obstacle) {
     return;
   }
   s.state = 'crash';
-  s.crashT = g.warm ? CFG.warmerCrashTime : CFG.crashTime * m.crashTimeMult;
+  s.crashT = g.warm ? CFG.warmerCrashTime : CFG.crashTime * m.crashTimeMult * (condition(g)?.crashMult ?? 1);
   g.warm = false;
   s.speed = 0;
   s.air = 0;
@@ -425,12 +433,13 @@ function updateSkier(g: Game, input: Input) {
   }
 
   const grounded = !airborne(s);
-  s.brake = input.brake;
-  s.tuck = input.tuck && !input.brake;
+  s.brake = input.brake && !m.noBrake;
+  s.tuck = input.tuck && !s.brake;
   s.boostT = Math.max(0, s.boostT - dt);
 
   // Steering: in the air you can still turn (it's a game, and it makes landings readable).
-  const base = CFG.turnRate * m.turnMult;
+  const cond = condition(g);
+  const base = CFG.turnRate * m.turnMult * (cond?.turnMult ?? 1);
   const rate = (grounded ? (s.tuck ? CFG.tuckTurnRate * m.tuckTurnMult : base) : base * m.airTurnMult) * dt;
   if (input.targetAngle !== undefined) {
     const target = clamp(input.targetAngle, -CFG.maxAngle, CFG.maxAngle);
@@ -441,7 +450,7 @@ function updateSkier(g: Game, input: Input) {
 
   let hike = 0;
   if (grounded) {
-    let top = (s.tuck ? CFG.tuck * m.tuckMult : CFG.cruise) * Math.max(0, Math.cos(s.angle));
+    let top = (s.tuck ? CFG.tuck * m.tuckMult : CFG.cruise) * (cond?.speedMult ?? 1) * Math.max(0, Math.cos(s.angle));
     if (s.brake) top *= CFG.brakeFactor;
     const boosting = s.boostT > 0;
     if (boosting) top *= CFG.boostMult;
@@ -508,7 +517,8 @@ function updateSkier(g: Game, input: Input) {
     const k = KINDS[o.kind];
     const dx = o.x - s.x;
     const dy = o.y - s.y;
-    if (Math.hypot(dx, dy) < k.r + CFG.skierR) {
+    const skierR = CFG.skierR * m.hitboxMult;
+    if (Math.hypot(dx, dy) < k.r + skierR) {
       if (airborne(s) && (k.jumpable || s.airKind === 'ramp')) {
         // Jumped over it: Gear hooks.
         if (o.touched) continue;
@@ -549,7 +559,7 @@ function updateSkier(g: Game, input: Input) {
       // Just went by it: a near miss if it was close and we were moving.
       o.passed = true;
       if (k.effect === 'crash' && !airborne(s) && s.speed >= CFG.nearMissMinSpeed &&
-          Math.abs(dx) < k.r + CFG.skierR + CFG.nearMissGap) {
+          Math.abs(dx) < k.r + skierR + CFG.nearMissGap) {
         const dog = o.kind === 'dog' && m.dogNearMult > 1;
         const pts = CFG.nearMissStyle * multiplier(g) * (dog ? m.dogNearMult : 1);
         g.skillStyle += pts;
@@ -640,13 +650,18 @@ function updateYeti(g: Game, y: Yeti) {
   y.y += vy * dt;
 }
 
-/** The Old One's avalanche: a wall across the slope that speeds up after the grace period and buries you. */
+/** An avalanche (the Old One's, or the Avalanche Condition): a wall across the slope that speeds up after the grace period and buries you. */
 function updateWall(g: Game) {
   const w = g.wall;
   if (!w) return;
   const s = g.skier;
   const t = g.time - graceFor(g);
   if (t < 0) return;
+  if (!w.armed) {
+    w.armed = true;
+    w.y = s.y - CFG.yeti.spawnBehind;
+    g.events.push({ type: 'yetiSpawn' });
+  }
   w.v = Math.min(w.max, w.start + (t / w.ramp) * (w.max - w.start));
   w.y = Math.max(w.y + w.v * CFG.dt, s.y - CFG.yeti.leash * 1.4);
   if (w.y >= s.y && s.state !== 'eaten') {

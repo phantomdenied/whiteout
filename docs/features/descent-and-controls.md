@@ -1,6 +1,6 @@
 # Descent & Controls — Feature Document
 
-> **Version:** v1.3 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.4 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > Skiing should feel good on its own, before any yeti or Gear. Thirty seconds on a phone should be enough to carve, tuck, and jump on purpose.
@@ -55,14 +55,18 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 - **Guarantees (validator):** a path search finds the cheapest clean line from the start to the finish gate. The line keeps hitbox + 0.75 m from every crash obstacle and ramp (dogs: their whole wander range), turns at most 45°, and changes its sideways rate gradually so it can actually be skied. A clean tuck along it must keep the yeti at least 12 m away. A layout that fails is rejected and re-rolled (up to 24 tries, then a cleared corridor as a fallback; in tests no slope needs the fallback).
 - **Validation:** the simulator's "clean skier" bot (`src/bot.ts`) follows the validator's line in a tuck without jumping, and must clear every generated slope without Gear (`npm run sim`, plus a test). A "cruiser" bot that never tucks must get caught.
 
-### Conditions (whole-slope modifiers; Mountains 2–3)
-| Condition | Effect |
+### Conditions (whole-slope modifiers)
+Mountain 1 slopes have none; 30% of mountain 2 slopes and 50% of mountain 3 slopes roll one; every Black Diamond has one. Avalanche only appears from mountain 2. The map shows each slope's Condition before you pick it.
+
+| Condition | Effect (as built in M3) |
 |---|---|
-| Powder | −20% top speed for you and the yeti; crashes are shorter |
-| Ice | Turning takes longer; random ice patches |
-| Night | Visible range shrinks to a lit cone ahead |
-| Fog | Obstacles appear later; the yeti meter becomes the main cue |
-| Avalanche | Replaces the yeti: a wall that starts at 10 m/s and accelerates to the pursuer cap (17.5 m/s) over 30 s; can't be staggered |
+| Powder | −20% top speed for you and the yeti (the pursuer rule holds); crashes 30% shorter; falling snow |
+| Ice | Every turn 25% slower; bluer snow. The validator demands a straighter line (at most ~27° instead of 45°). Ice patches are not built yet |
+| Night | Dark except a headlamp pool just ahead of the skier |
+| Fog | A white wall that thickens with distance downhill: obstacles appear late |
+| Avalanche | Replaces the yeti: a wall appears 40 m back when the grace ends, speeding up from 10 to 16 m/s over 30 s (16, not the 17.5 cap, so a clean tuck has room). Can't be staggered |
+
+Simulator (clean bot, hardest Black Diamond of each mountain): 100% under every Condition on mountains 1–2, 87–100% on mountain 3.
 
 ### Edge cases
 - **Skiing uphill:** allowed, slowly (by heading sideways and tapping). It's useful for the stump→mushroom secret and nothing else; going far uphill wakes the Top Yeti (see [Yetis](yetis.md#edge-yetis)).
@@ -103,3 +107,4 @@ Pick by playtest: time to clear the first slope, crash rate, self-reported feel.
 | v1.1 | 2026-10-17 | Avalanche speed defined; tuck speed made fixed |
 | v1.2 | 2026-10-18 | M1: chunk grid format, seams, edge tree line, validator rules, bots; slope width 54 m |
 | v1.3 | 2026-10-18 | Playtest: mountain 1 too sparse. Added scatter, smaller warm-up dip, line clearance 0.75 m |
+| v1.4 | 2026-10-18 | M3: Conditions as built (Ice softened to −25% turning, Avalanche tops out at 16 m/s), where they appear |

@@ -6,7 +6,7 @@ A downhill-skiing roguelike for phones: every slope is a chase, and the yeti is 
 
 **Playtesting?** Play a run or two, then [leave feedback](https://github.com/phantomdenied/whiteout/issues/new?template=playtest.yml). The seed is on the title and end screens; include it if something odd happened.
 
-**Status: M2 — builds.** Each of the three mountains runs Slope, Slope, Lodge, Slope, Slope, Lodge, Summit. A reward pick after every descent (Gear, a Snack, or Tokens), a shop at every Lodge (buy, sell, reroll), 30 Gear across tuck / jump / crash / risk builds, 4 Snacks, and a boss on every Summit: Big Yeti, The Twins, The Old One. Runs save between stages. See the [design document](docs/GDD.md).
+**Status: M3 — the roguelike.** Pick a skier (Rookie, Snowboarder, Retiree or Dog), then pick your route down three mountains on a branching map: Slopes and Black Diamonds, Lodges (shop), Warming Huts (rest) and Events (risky choices), and a boss on every Summit. Mountains 2 and 3 bring Conditions: Powder, Ice, Night, Fog and Avalanches. 30 Gear, 4 Snacks, 6 Curses. Runs save between nodes. See the [design document](docs/GDD.md).
 
 ## Play
 - **Drag** left/right anywhere to steer (relative to where your thumb lands). **Hold your thumb low** to tuck (faster, wider turns). **Drag up** to slow down.
@@ -15,14 +15,14 @@ A downhill-skiing roguelike for phones: every slope is a chase, and the yeti is 
 - Desktop: ← → steer, ↓ tuck, ↑ slow, Space jump/trick, 1–4 pick a reward, Esc pause, Enter continue.
 - The yeti comes after a few seconds. It's faster than cruising and slower than a clean tuck. Crashes cost 1.4 s, and that's how it catches you.
 - Hop over rocks, stumps, dead trees, dogs and moguls. Trees need a ramp (or Spring Boots).
-- Add `?seed=123` to replay a run, `?bot` to let the clean-skier bot drive, `?stage=6` to start at a stage (0-based; 2 is the first Lodge, 6/13/20 are the Summits).
+- Add `?seed=123` to replay a run, `?bot` to let the clean-skier bot drive, `?mountain=1&row=6` to start further in (0-based; row 6 is the Summit).
 
 ## Develop
 ```bash
 npm install
 npm run dev           # local server (also reachable from your phone on the same Wi-Fi)
 npm test              # engine, slope, run and gear tests
-npm run sim           # bots ski every descent for 50 seeds (plain, cruiser, tuck build, crash build)
+npm run sim           # bots ski every slope, Black Diamond × Condition and Summit (add `-- 30 builds` for build tables)
 npm run build:single  # dist/whiteout.html, one self-contained file
 ```
 
@@ -32,8 +32,9 @@ Code layout:
 - `src/engine.ts` — pure, deterministic simulation at a fixed 60 Hz (no DOM); all tuning in `CFG`
 - `src/chunks.ts` — the hand-drawn chunk library (text grids; edit freely, tests check each has a clean line)
 - `src/slope.ts` — slope generation, difficulty budget, and the line validator
-- `src/run.ts` — stages, slope and Summit parameters, reward offers, the Lodge, save
-- `src/gear.ts` — the 30 Gear, the mods they apply, and Snacks
+- `src/run.ts` — route maps, descent parameters and Conditions, rewards, the Lodge, Warming Huts, Events, save
+- `src/gear.ts` — the 30 Gear, Curses, starting skiers, Snacks, and the mods they apply
+- `src/events.ts` — the Event library
 - `src/bot.ts` — the clean-skier bot used by `sim/` and tests
 - `src/input.ts` — touch and keyboard → engine input
 - `src/render.ts` — canvas renderer with placeholder art

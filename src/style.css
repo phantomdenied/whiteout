@@ -581,6 +581,156 @@ body {
   cursor: not-allowed;
 }
 
+.chips li.curse {
+  background: rgba(214, 69, 43, 0.25);
+  color: #ffd9d2;
+}
+
+.note {
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: rgba(242, 140, 40, 0.15);
+  color: var(--panel-ink);
+}
+
+.condition {
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: rgba(159, 195, 220, 0.18);
+}
+
+.condition b {
+  color: var(--panel-ink);
+}
+
+/* Double black diamond (Black Diamond nodes): two small diamonds. */
+.trail.double::before,
+.trail.double::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  background: var(--ink);
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+.trail.double {
+  display: flex;
+  gap: 4px;
+  width: auto;
+}
+
+/* Route map: rows top (start) to bottom (Summit), nodes placed by column, edges drawn underneath. */
+.map {
+  position: relative;
+  flex: none;
+}
+
+.map svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map line {
+  stroke: rgba(238, 243, 247, 0.22);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 3 4;
+}
+
+.map line.taken {
+  stroke: var(--boundary);
+  stroke-dasharray: none;
+}
+
+.map-row {
+  position: relative;
+}
+
+.node {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-width: 76px;
+  max-width: 33%;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: #46535e;
+  color: var(--panel-ink);
+  font: inherit;
+  cursor: default;
+}
+
+.node .trail {
+  width: auto;
+  height: 16px;
+}
+
+.node-icon {
+  font-size: 15px;
+  line-height: 16px;
+}
+
+.node-name {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.node-sub {
+  font-size: 10px;
+  line-height: 1.1;
+  color: #9fb0bd;
+}
+
+.node.open {
+  background: var(--snow);
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--boundary);
+  cursor: pointer;
+}
+
+.node.open .node-sub {
+  color: var(--ink-dim);
+}
+
+.node.open .trail[data-rating='black']::before,
+.node.open .trail.double::after {
+  background: var(--ink);
+}
+
+.node:not(.open) .trail[data-rating='black']::before,
+.node:not(.open) .trail.double::after {
+  background: var(--panel-ink);
+}
+
+.node.taken {
+  background: #7a5a3a;
+}
+
+/* Dim with color, not opacity, so the route lines never show through. */
+.node.past,
+.node.locked {
+  background: #3f4b55;
+  color: #8a9aa6;
+}
+
+.node.summit {
+  min-width: 120px;
+}
+
+.node:focus-visible {
+  outline: 3px solid var(--boundary);
+  outline-offset: 2px;
+}
+
 .meta {
   font-size: 11px;
   color: #9fb0bd;

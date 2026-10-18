@@ -51,7 +51,7 @@ Summits are 1,200 m long, one difficulty step easier than the mountain's last sl
 - **Yeti reaches you mid-air:** you're caught on landing unless you land beyond its reach. This rewards big jumps.
 - **Caught while crashed:** you're caught.
 - **Finish gate:** crossing it while the yeti is touching you counts as a clear. Ties go to the player.
-- **Avalanche Condition:** replaces the yeti (no yeti on that slope).
+- **Avalanche Condition:** replaces the yeti (no yeti on that slope): a wall that appears 40 m back when the grace ends and speeds up from 10 to 16 m/s. Fish and other staggers don't affect it.
 
 ## Player Experience
 - **Intended:** the cold-sweat moment from 1991 every slope, followed by relief and a burst of Style at the gate.

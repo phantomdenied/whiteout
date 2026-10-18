@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { botInput } from '../src/bot';
 import { CHUNKS, CHUNK_COLS, CHUNK_ROWS } from '../src/chunks';
 import { CFG, newGame, step } from '../src/engine';
-import { TOTAL_SLOPES, TOTAL_STAGES, paramsFor, slopeParams, stageKind } from '../src/run';
-import { KINDS, LINE, type Obstacle, type ObstacleKind, SLOPE, buildSlope, chaseGap, findLine } from '../src/slope';
+import { MOUNTAINS, SLOPES_PER_MOUNTAIN, TOTAL_SLOPES, diamondParams, slopeParams, summitParams } from '../src/run';
+import { CONDITION_IDS, KINDS, LINE, type Obstacle, type ObstacleKind, SLOPE, buildSlope, chaseGap, findLine } from '../src/slope';
 
 const CELL_KIND: Record<string, ObstacleKind> = { T: 'tree', D: 'deadtree', r: 'rock', s: 'stump', m: 'moguls', R: 'ramp', d: 'dog' };
 
@@ -44,6 +44,17 @@ describe('slope generation', () => {
     }
   });
 
+  it('every Black Diamond, under every Condition, validates without the fallback', () => {
+    MOUNTAINS.forEach((_, m) => {
+      for (const c of CONDITION_IDS) {
+        for (let seed = 1; seed <= 4; seed++) {
+          const s = buildSlope(seed * 37 + m, diamondParams(m * SLOPES_PER_MOUNTAIN + SLOPES_PER_MOUNTAIN - 1, c), CFG.tuck);
+          expect(s.fallback, `mountain ${m + 1} ${c} seed ${seed}`).toBe(false);
+        }
+      }
+    });
+  });
+
   it("the validated line keeps its clearance and stays ahead of the yeti", () => {
     const p = slopeParams(TOTAL_SLOPES - 1);
     const s = buildSlope(7, p, CFG.tuck);
@@ -58,16 +69,20 @@ describe('slope generation', () => {
     expect(chaseGap(line, CFG.tuck, p.yetiSpeed, p.grace)).toBeGreaterThanOrEqual(LINE.minGap);
   });
 
-  it('the clean-skier bot clears every descent of a run, Summits included', () => {
-    for (let i = 0; i < TOTAL_STAGES; i++) {
-      if (stageKind(i) === 'lodge') continue;
-      const g = newGame(2024 + i, { params: paramsFor(i) });
+  it('the clean-skier bot clears every slope and Summit of a run, and Black Diamonds under every Condition', () => {
+    const descents = [
+      ...Array.from({ length: TOTAL_SLOPES }, (_, i) => ({ label: `slope ${i + 1}`, params: slopeParams(i) })),
+      ...MOUNTAINS.map((_, m) => ({ label: `summit ${m + 1}`, params: summitParams(m) })),
+      ...CONDITION_IDS.map((c) => ({ label: `mountain 2 diamond ${c}`, params: diamondParams(SLOPES_PER_MOUNTAIN + 3, c) })),
+    ];
+    descents.forEach(({ label, params }, i) => {
+      const g = newGame(2024 + i, { params });
       while (!g.over && g.tick < 60 * 300) {
         step(g, botInput(g));
         g.events.length = 0;
       }
-      expect(g.result, `stage ${i + 1}`).toBe('cleared');
-    }
+      expect(g.result, label).toBe('cleared');
+    });
   });
 
   it('a skier who never tucks gets caught', () => {

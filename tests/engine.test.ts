@@ -387,3 +387,54 @@ describe('bosses', () => {
   });
 });
 
+
+describe('conditions', () => {
+  const open = (condition?: 'powder' | 'ice' | 'avalanche', gear: string[] = [], skier?: 'snowboarder' | 'dog') =>
+    newGame(1, { obstacles: [], params: { length: Infinity, difficulty: 3, mountain: 1, yetiSpeed: 15, grace: 5, condition }, mods: modsFor(gear, [], skier) });
+
+  it('Powder slows you and the yeti by the same 20%, and a clean tuck still wins', () => {
+    const g = open('powder');
+    run(g, 6, tuck);
+    expect(g.skier.speed).toBeCloseTo(CFG.tuck * 0.8, 1);
+    run(g, 60, tuck);
+    expect(g.result).toBeNull();
+    expect(Math.hypot(g.yeti.vx, g.yeti.vy)).toBeLessThanOrEqual(15 * 0.8 + 1e-9);
+  });
+
+  it('Ice turns slower', () => {
+    const iced = open('ice');
+    const dry = open();
+    for (const g of [iced, dry]) run(g, 0.2, { ...NO_INPUT, turn: 1 });
+    expect(iced.skier.angle).toBeLessThan(dry.skier.angle);
+  });
+
+  it('Avalanche: no yeti; the wall shows up after the grace, and buries a skier who stops', () => {
+    const g = open('avalanche');
+    expect(g.yetis).toHaveLength(0);
+    expect(g.wall!.armed).toBe(false);
+    run(g, 5.5, tuck);
+    expect(g.wall!.armed).toBe(true);
+    run(g, 40, { ...NO_INPUT, targetAngle: Math.PI / 2 });
+    expect(g.result).toBe('eaten');
+    expect(g.events.some((e) => e.type === 'buried')).toBe(true);
+  });
+
+  it('a clean tuck outruns the Avalanche', () => {
+    const g = open('avalanche');
+    run(g, 120, tuck);
+    expect(g.result).toBeNull();
+  });
+
+  it("the Snowboarder can't brake; the Dog is small enough to slip past a tree", () => {
+    const board = open(undefined, [], 'snowboarder');
+    run(board, 3, { ...NO_INPUT, brake: true });
+    expect(board.skier.speed).toBeCloseTo(CFG.cruise, 0);
+    const pass = (skier?: 'dog') => {
+      const g = newGame(1, { obstacles: [ob('tree', 0.9, 12)], mods: modsFor([], [], skier) });
+      run(g, 2);
+      return g.events.some((e) => e.type === 'crash');
+    };
+    expect(pass()).toBe(true);
+    expect(pass('dog')).toBe(false);
+  });
+});

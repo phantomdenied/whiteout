@@ -41,6 +41,9 @@ const VIEW_HEIGHT_M = 44;
 const SKIER_SCREEN_Y = 0.3;
 /** While a boss waits behind you, the camera looks back so you can see it. */
 const BOSS_LOOK_Y = 0.62;
+const ICE = { snow: '#e3eff7', speck: '#bcd6ea' };
+const POWDER = { snow: '#fbfcfe', speck: '#e8eef4' };
+
 /** Fur, shade and face per pursuer; size multiplier. Bosses read as different animals at a glance. */
 const LOOKS: Record<YetiLook, { fur: string; shade: string; face: string; size: number }> = {
   yeti: { fur: '#e9f1f7', shade: '#a9c0d2', face: '#2a3d63', size: 1.25 },
@@ -92,7 +95,7 @@ export class Renderer {
 
   reset(g: Game) {
     this.camX = g.skier.x;
-    this.camFrac = g.yetis.some((y) => y.state === 'holding') || g.wall ? BOSS_LOOK_Y : SKIER_SCREEN_Y;
+    this.camFrac = g.yetis.some((y) => y.state === 'holding') || g.wall?.armed ? BOSS_LOOK_Y : SKIER_SCREEN_Y;
     this.trail = [];
     this.shake = 0;
   }
@@ -115,7 +118,8 @@ export class Renderer {
     const toX = (x: number) => w / 2 + (x - this.camX) * ppm + sx;
     const toY = (y: number) => (y - camY) * ppm + sy;
 
-    const tone = SNOW[g.params.mountain] ?? SNOW[0];
+    const cond = g.params.condition;
+    const tone = cond === 'ice' ? ICE : cond === 'powder' ? POWDER : SNOW[g.params.mountain] ?? SNOW[0];
     ctx.fillStyle = tone.snow;
     ctx.fillRect(0, 0, w, h);
 
@@ -254,6 +258,37 @@ export class Renderer {
         }
       }
       drawYetis();
+    }
+
+    // Conditions that change what you can see.
+    if (cond === 'night') {
+      // Dark everywhere except a headlamp pool just ahead of the skier.
+      const lx = toX(s.x) + Math.sin(s.angle) * ppm * 4;
+      const ly = toY(s.y) + Math.cos(s.angle) * ppm * 5;
+      const lamp = ctx.createRadialGradient(lx, ly, ppm * 2.5, lx, ly, ppm * 13);
+      lamp.addColorStop(0, 'rgba(8, 14, 30, 0)');
+      lamp.addColorStop(0.55, 'rgba(8, 14, 30, 0.55)');
+      lamp.addColorStop(1, 'rgba(8, 14, 30, 0.94)');
+      ctx.fillStyle = lamp;
+      ctx.fillRect(0, 0, w, h);
+    } else if (cond === 'fog') {
+      // A wall of white that thickens with distance downhill: obstacles appear late.
+      const sy = toY(s.y);
+      const fog = ctx.createLinearGradient(0, sy + ppm * 3, 0, sy + ppm * 17);
+      fog.addColorStop(0, 'rgba(236, 241, 245, 0.12)');
+      fog.addColorStop(1, 'rgba(236, 241, 245, 0.96)');
+      ctx.fillStyle = fog;
+      ctx.fillRect(0, 0, w, h);
+    } else if (cond === 'powder') {
+      // Falling snow, in screen space.
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      for (let i = 0; i < 90; i++) {
+        const fx = (hash(i, 7) * w + g.time * 18 * (0.5 + hash(i, 3))) % w;
+        const fy = (hash(i, 11) * h + g.time * 60 * (0.6 + hash(i, 5))) % h;
+        ctx.beginPath();
+        ctx.arc(fx, fy, 1 + hash(i, 13) * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     // Off-screen pursuer arrows at the top edge.

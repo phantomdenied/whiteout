@@ -47,6 +47,28 @@ export const SLOPE = {
 
 export type BossKind = 'big' | 'twins' | 'old';
 
+/** Whole-slope modifiers (descent-and-controls.md §Conditions). */
+export type Condition = 'powder' | 'ice' | 'night' | 'fog' | 'avalanche';
+
+export const CONDITIONS: Record<Condition, {
+  name: string;
+  text: string;
+  /** Skier top speeds (cruise and tuck) — only ever lowered together with the pursuers' (the pursuer rule). */
+  speedMult: number;
+  yetiMult: number;
+  crashMult: number;
+  turnMult: number;
+  /** Avalanche: a wall replaces the yeti. Starts at `start` m/s, reaches `max` over `ramp` s. */
+  wall?: { start: number; max: number; ramp: number };
+}> = {
+  powder: { name: 'Powder', text: 'Deep snow: you and the yeti are 20% slower, and crashes are softer.', speedMult: 0.8, yetiMult: 0.8, crashMult: 0.7, turnMult: 1 },
+  ice: { name: 'Ice', text: 'Hard ice: every turn is 25% slower.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 0.75 },
+  night: { name: 'Night', text: 'You can only see what your headlamp lights up.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1 },
+  fog: { name: 'Fog', text: 'Obstacles appear late out of the fog. Watch the yeti meter.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1 },
+  avalanche: { name: 'Avalanche', text: 'No yeti. An avalanche instead: it never stops speeding up, and fish won\'t help.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1, wall: { start: 10, max: 16, ramp: 30 } },
+};
+export const CONDITION_IDS = Object.keys(CONDITIONS) as Condition[];
+
 export interface SlopeParams {
   /** Meters from the start to the finish gate (Infinity for an endless slope). */
   length: number;
@@ -58,6 +80,7 @@ export interface SlopeParams {
   grace: number;
   /** A Summit: the boss replaces the yeti. */
   boss?: BossKind;
+  condition?: Condition;
 }
 
 export interface Slope {
@@ -113,8 +136,13 @@ export function buildSlope(seed: number, params: SlopeParams, tuck: number): Slo
     const rng = createRng(mix(seed, attempt));
     const { obstacles, chunks } = layout(rng, params);
     if (!Number.isFinite(params.length)) return { obstacles, line: null, chunks, attempts: attempt + 1, fallback: false };
-    const line = findLine(obstacles, params.length);
-    if (line && chaseGap(line, tuck, params.yetiSpeed, params.grace, params.boss ? BOSS_HOLD : undefined) >= LINE.minGap) {
+    // On Ice the skier turns slower, so the line must be straighter (at most ~27° instead of 45°).
+    const line = findLine(obstacles, params.length, 0, params.condition === 'ice' ? LINE.maxShift / 2 : LINE.maxShift);
+    // Validate against the conditions the skier will actually face: Powder slows both sides, an Avalanche
+    // is modeled as a pursuer already at its top speed (generous to the avalanche).
+    const c = params.condition ? CONDITIONS[params.condition] : null;
+    const chaser = c?.wall ? c.wall.max : params.yetiSpeed * (c?.yetiMult ?? 1);
+    if (line && chaseGap(line, tuck * (c?.speedMult ?? 1), chaser, params.grace, params.boss ? BOSS_HOLD : undefined) >= LINE.minGap) {
       return { obstacles, line, chunks, attempts: attempt + 1, fallback: false };
     }
   }
@@ -228,11 +256,11 @@ function layout(rng: Rng, params: SlopeParams): { obstacles: Obstacle[]; chunks:
  * crash obstacle (or ramp) than its hitbox plus margin, turning at most 45°. Moguls cost extra but are allowed.
  * Returns null when no such line exists.
  */
-export function findLine(obstacles: Obstacle[], length: number, from = 0): number[] | null {
+export function findLine(obstacles: Obstacle[], length: number, from = 0, maxShift = LINE.maxShift): number[] | null {
   const half = SLOPE.halfWidth;
   const n = Math.round((2 * half) / LINE.col) + 1;
   const rows = Math.ceil(length - from) + 1;
-  const K = Math.round(LINE.maxShift / LINE.col);
+  const K = Math.max(1, Math.round(maxShift / LINE.col));
   const blocked = new Uint8Array(rows * n);
   const soft = new Uint8Array(rows * n);
   const xAt = (c: number) => -half + c * LINE.col;
