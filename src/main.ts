@@ -446,11 +446,20 @@ function newAttract() {
   acc = 0;
 }
 
+/** The Memphis-style logo: pink block letters with a navy offset shadow, confetti shapes, a yellow tagline tag. */
+function logoHtml(small = false): string {
+  return `<div class="memphis${small ? ' small' : ''}" role="img" aria-label="Whiteout: ski or be eaten">
+    <span class="m-dot" aria-hidden="true"></span><span class="m-tri" aria-hidden="true"></span>
+    <span class="m-x" aria-hidden="true">✕</span><span class="m-dash" aria-hidden="true"></span><span class="m-smile" aria-hidden="true"></span>
+    <h1>Whiteout</h1>
+    <span class="m-tag">Ski or be eaten</span>
+  </div>`;
+}
+
 function showAttract() {
   const best = loadBest();
   card.innerHTML = `
-    <h1 class="logo">Whiteout</h1>
-    <p class="tagline">Something is chasing you.</p>
+    ${logoHtml()}
     <p class="press">Tap to start</p>
     <span class="meta">${best ? `Best: ${best} of ${TOTAL_DESCENTS} descents` : 'A downhill roguelike'}</span>`;
 }
@@ -460,7 +469,7 @@ function showTitle() {
   const saved = deserialize(load(SAVE_KEY));
   card.innerHTML = `
     <span class="eyebrow">M4 · prototype</span>
-    <h1>Whiteout</h1>
+    ${logoHtml(true)}
     <p>Three mountains, and a yeti on every slope. Pick your route down: Black Diamonds pay better, Lodges sell Gear, and every Summit has a boss. Cruising won't outrun the yeti. Tucking will, if you don't crash.</p>
     <dl class="controls">
       <dt>Steer</dt><dd>Drag left / right · ← →</dd>
@@ -474,8 +483,8 @@ function showTitle() {
       ${saved ? '<button class="btn" id="continue">Continue</button>' : ''}
       <button class="btn${saved ? ' ghost' : ''}" id="go">New run</button>
       <button class="btn ghost" id="daily">Daily run</button>
-      <button class="btn ghost" id="chalet">Chalet · ${profile.patches} Patches</button>
     </div>
+    <div class="actions"><button class="btn ghost" id="chalet">Chalet · ${profile.patches} Patches</button></div>
     ${dailyHtml()}
     <span class="meta">${saved ? `Saved run: ${esc(MOUNTAINS[saved.mountain].name)}, ◆ ${saved.tokens} · ` : ''}${best ? `Best: ${best} of ${TOTAL_DESCENTS} descents` : `Seed ${pendingSeed}`}${profile.altitude ? ` · Altitude ${profile.altitude} unlocked` : ''}</span>
     <div class="actions small">${muteButton()}${installHtml()}</div>`;

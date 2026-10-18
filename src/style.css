@@ -895,7 +895,7 @@ body {
   animation: blink 1.2s steps(2, jump-none) infinite;
 }
 
-#app.attract .card .logo {
+#app.attract .card .memphis {
   margin-top: auto;
 }
 
@@ -984,4 +984,106 @@ body {
   font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* The Memphis logo (90s): pink Bungee letters, navy outline and offset shadow, confetti, a yellow pixel tag.
+   Sized in em so the menu card can use a smaller copy. */
+.memphis {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.5em;
+  padding: 1.1em 0.6em 1.4em;
+  /* About 82% of the screen width for the word itself (Bungee is wide). */
+  font-size: clamp(9px, 2.9vw, 15px);
+}
+
+.memphis h1 {
+  position: relative;
+  margin: 0;
+  font: 400 4.6em/1 'Bungee', var(--font-display);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #ff3e7f;
+  -webkit-text-stroke: 0.05em #1b1b3a;
+  paint-order: stroke fill;
+  text-shadow: 0.09em 0.09em 0 #1b1b3a;
+  transform: rotate(-4deg);
+}
+
+.memphis .m-tag {
+  position: relative;
+  padding: 0.55em 0.75em;
+  background: #ffd23f;
+  box-shadow: 0.25em 0.25em 0 #1b1b3a;
+  color: #1b1b3a;
+  font: 400 0.95em/1 'Press Start 2P', monospace;
+  text-transform: uppercase;
+  transform: rotate(-4deg);
+}
+
+.memphis [aria-hidden] {
+  position: absolute;
+  pointer-events: none;
+}
+
+.memphis .m-dot {
+  left: 0.4em;
+  top: 0.2em;
+  width: 2.4em;
+  height: 2.4em;
+  border-radius: 50%;
+  background: #2ec4b6;
+}
+
+.memphis .m-tri {
+  right: 0.6em;
+  top: 0;
+  border-left: 1.5em solid transparent;
+  border-right: 1.5em solid transparent;
+  border-bottom: 2.6em solid #ffd23f;
+}
+
+.memphis .m-x {
+  left: 46%;
+  top: -0.4em;
+  color: #2ec4b6;
+  font: 900 1.7em/1 sans-serif;
+}
+
+.memphis .m-dash {
+  left: 1.2em;
+  bottom: 0.5em;
+  width: 3.6em;
+  height: 0.6em;
+  background: repeating-linear-gradient(90deg, #1b1b3a 0 0.32em, transparent 0.32em 0.64em);
+}
+
+.memphis .m-smile {
+  right: 1.4em;
+  bottom: 0.2em;
+  width: 2.8em;
+  height: 1.3em;
+  border: 0.22em solid #ff3e7f;
+  border-top: none;
+  border-radius: 0 0 1.6em 1.6em;
+}
+
+/* On the menu card: smaller, left-aligned with the text, only the triangle for a dash of confetti. */
+.memphis.small {
+  justify-items: start;
+  padding: 0.4em 0 0.6em;
+  font-size: 10px;
+}
+
+.memphis.small .m-dot,
+.memphis.small .m-x,
+.memphis.small .m-dash,
+.memphis.small .m-smile {
+  display: none;
+}
+
+.memphis.small .m-tri {
+  right: 0;
+  top: -0.4em;
 }
