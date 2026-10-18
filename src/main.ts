@@ -113,6 +113,8 @@ let run: RunState = newRun(pendingSeed);
 /** Attract mode: the bot skis demo descents behind the start screen, title and skier select. */
 let attractNo = Math.floor(Math.random() * 1000);
 let attractOverAt = 0;
+/** Half the demos are skied sloppily (lapses off the line, greedy tricks), so the start screen shows fails too. */
+let attractSloppy = false;
 let lastInput = performance.now();
 const ATTRACT_IDLE_MS = 45_000;
 let game: Game = attractGame();
@@ -149,6 +151,7 @@ function descentGame(r: RunState): Game {
 /** A real descent for the demo: slopes from all three mountains, now and then a Black Diamond or a Summit. */
 function attractGame(): Game {
   const n = attractNo++;
+  attractSloppy = Math.random() < 0.5;
   const slope = (n * 7) % TOTAL_SLOPES;
   const params = n % 5 === 4
     ? summitParams(n % MOUNTAINS.length)
@@ -158,12 +161,17 @@ function attractGame(): Game {
   return newGame(randomSeed(), { params: { ...params, grace: Math.min(params.grace, 4) } });
 }
 
-/** The demo skier: the clean-line bot, plus the odd hop-and-trick on a straight stretch (one trick lands safely). */
+/**
+ * The demo skier: the clean-line bot, plus the odd hop-and-trick on a straight stretch. One trick lands safely;
+ * the sloppy skier sometimes goes for three and botches the landing.
+ */
+let greedy = false;
 function attractInput(g: Game) {
-  const input = botInput(g);
+  const input = botInput(g, attractSloppy ? { lapses: 0.0007 } : {});
   const s = g.skier;
   if (s.state !== 'ski') return input;
-  if (s.air > 0) return { ...input, jump: s.tricks === 0 && s.airTotal - s.air > 0.08 };
+  if (s.air > 0) return { ...input, jump: (s.tricks === 0 || greedy) && s.airTotal - s.air > 0.08 };
+  greedy = attractSloppy && Math.random() < 0.3;
   if (input.tuck && s.speed > 14 && Math.abs(s.angle) < 0.15 && Math.random() < 0.006) return { ...input, jump: true };
   return input;
 }
