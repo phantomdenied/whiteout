@@ -66,7 +66,7 @@ export const CONDITIONS: Record<Condition, {
 }> = {
   powder: { name: 'Powder', text: 'Deep snow: you and the yeti are 20% slower, and crashes are softer.', speedMult: 0.8, yetiMult: 0.8, crashMult: 0.7, turnMult: 1 },
   ice: { name: 'Ice', text: 'Hard ice: every turn is 25% slower.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 0.75 },
-  night: { name: 'Night', text: 'You can only see what your headlamp lights up.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1 },
+  night: { name: 'Night', text: 'You can only see what your headlamp beam lights up: turn to look.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1 },
   fog: { name: 'Fog', text: 'Obstacles appear late out of the fog. Watch the yeti meter.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1 },
   avalanche: { name: 'Avalanche', text: 'No yeti. An avalanche right on your heels, nearly as fast as your tuck: you\'ll want speed and control Gear, and a clean run. Pays triple Tokens and two rares.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1, wall: { start: 16.5, max: 17, ramp: 10, leash: 10 } },
 };

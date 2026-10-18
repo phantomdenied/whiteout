@@ -62,6 +62,9 @@ const SNOW = [
   { snow: '#f7f9fc', speck: '#d6e2f0' },
 ];
 
+/** Night headlamp: cone half-angle (radians), reach and glow radius (meters). */
+const HEADLAMP = { halfAngle: 0.42, reach: 18, glow: 2.6 };
+
 /** Burning Man: smoky, ash-dusted snow. */
 const ASH = { snow: '#efe6dc', speck: '#cdbfb2' };
 
@@ -79,6 +82,8 @@ export class Renderer {
   private camFrac = SKIER_SCREEN_Y;
   private shake = 0;
   private trail: { x: number; y: number; a: number }[] = [];
+  /** Offscreen layer for the night darkness (the headlamp cone is cut out of it). */
+  private dark: HTMLCanvasElement | null = null;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -292,15 +297,7 @@ export class Renderer {
 
     // Conditions that change what you can see.
     if (cond === 'night') {
-      // Dark everywhere except a headlamp pool just ahead of the skier.
-      const lx = toX(s.x) + Math.sin(s.angle) * ppm * 4;
-      const ly = toY(s.y) + Math.cos(s.angle) * ppm * 5;
-      const lamp = ctx.createRadialGradient(lx, ly, ppm * 2.5, lx, ly, ppm * 13);
-      lamp.addColorStop(0, 'rgba(8, 14, 30, 0)');
-      lamp.addColorStop(0.55, 'rgba(8, 14, 30, 0.55)');
-      lamp.addColorStop(1, 'rgba(8, 14, 30, 0.94)');
-      ctx.fillStyle = lamp;
-      ctx.fillRect(0, 0, w, h);
+      this.headlamp(g, toX(s.x), toY(s.y));
     } else if (cond === 'fog') {
       // A wall of white that thickens with distance downhill: obstacles appear late.
       const sy = toY(s.y);
@@ -575,6 +572,68 @@ export class Renderer {
       ctx.closePath();
       ctx.fill();
     }
+  }
+
+  /**
+   * Night: darkness everywhere except a cone of light from the skier's headlamp, pointing where they're
+   * heading, plus a faint glow around them. Drawn on an offscreen layer: fill it dark, cut the light out
+   * (destination-out, feathered with a few widening passes), then lay it over the slope.
+   */
+  private headlamp(g: Game, px: number, py: number) {
+    const { ctx, w, h, ppm: u, dpr } = this;
+    const s = g.skier;
+    if (!this.dark) this.dark = document.createElement('canvas');
+    const layer = this.dark;
+    if (layer.width !== this.canvas.width || layer.height !== this.canvas.height) {
+      layer.width = this.canvas.width;
+      layer.height = this.canvas.height;
+    }
+    const d = layer.getContext('2d')!;
+    d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    d.globalCompositeOperation = 'source-over';
+    d.clearRect(0, 0, w, h);
+    d.fillStyle = 'rgba(8, 14, 30, 0.94)';
+    d.fillRect(0, 0, w, h);
+    d.globalCompositeOperation = 'destination-out';
+
+    // The lamp sits on the helmet (lifted with the skier in the air) and points along the heading.
+    const lift = airborne(s) ? Math.sin((1 - s.air / s.airTotal) * Math.PI) * u * (s.airKind === 'ramp' ? 1.4 : 0.7) : 0;
+    const hx = px;
+    const hy = py - lift - u * 1.3;
+    const dir = s.state === 'crash' ? 0 : s.angle;
+    const reach = u * HEADLAMP.reach;
+    const light = d.createRadialGradient(hx, hy, u * 0.5, hx, hy, reach);
+    light.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    light.addColorStop(0.65, 'rgba(0, 0, 0, 0.85)');
+    light.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    d.fillStyle = light;
+    // Feathered edges: the full-strength core, then many slightly wider, faint passes that blend smoothly.
+    for (let pass = 0; pass <= 12; pass++) {
+      const half = HEADLAMP.halfAngle * (1 + pass * 0.05);
+      d.globalAlpha = pass === 0 ? 1 : 0.1;
+      d.beginPath();
+      d.moveTo(hx, hy);
+      for (let i = 0; i <= 12; i++) {
+        const a = dir - half + (i / 12) * half * 2;
+        d.lineTo(hx + Math.sin(a) * reach, hy + Math.cos(a) * reach);
+      }
+      d.closePath();
+      d.fill();
+    }
+    // A faint glow around the skier, so you can still see yourself (and what's right beside you).
+    d.globalAlpha = 0.7;
+    const glow = d.createRadialGradient(px, py - u * 0.6, 0, px, py - u * 0.6, u * HEADLAMP.glow);
+    glow.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    d.fillStyle = glow;
+    d.fillRect(px - u * HEADLAMP.glow, py - u * (HEADLAMP.glow + 0.6), u * HEADLAMP.glow * 2, u * HEADLAMP.glow * 2);
+    d.globalAlpha = 1;
+    d.globalCompositeOperation = 'source-over';
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(layer, 0, 0);
+    ctx.restore();
   }
 
   /** A flickering flame: an outer orange blob and a yellow core, sized `size` (pixels) and centered at its base. */
