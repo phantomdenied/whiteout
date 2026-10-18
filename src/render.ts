@@ -298,6 +298,7 @@ export class Renderer {
     // Conditions that change what you can see.
     if (cond === 'night') {
       this.headlamp(g, toX(s.x), toY(s.y));
+      this.glowingEyes(g, toX, toY);
     } else if (cond === 'fog') {
       // A wall of white that thickens with distance downhill: obstacles appear late.
       const sy = toY(s.y);
@@ -684,13 +685,44 @@ export class Renderer {
     }
   }
 
+  /** How far a yeti's body bounces up this frame (running, or chewing). */
+  private yetiBob(g: Game, y: Yeti): number {
+    const u = this.ppm;
+    if (y.state === 'eating') return Math.abs(Math.sin(g.time * 14)) * u * 0.15;
+    const still = y.state === 'holding' || y.stunT > 0;
+    return still ? 0 : Math.abs(Math.sin(g.time * 10 + y.dx)) * u * 0.12;
+  }
+
+  /** At night: red eyes glowing out of the dark, drawn over the darkness so you see them before the yeti. */
+  private glowingEyes(g: Game, toX: (x: number) => number, toY: (y: number) => number) {
+    const { ctx, ppm: u } = this;
+    const flicker = 0.85 + Math.sin(g.time * 3) * 0.15;
+    for (const y of g.yetis) {
+      if (y.state === 'waiting') continue;
+      const S = LOOKS[y.look].size;
+      const px = toX(y.x);
+      const py = toY(y.y) - this.yetiBob(g, y);
+      for (const side of [-1, 1]) {
+        const ex = px + side * u * 0.16 * S;
+        const ey = py - u * 1.66 * S;
+        const glow = ctx.createRadialGradient(ex, ey, 0, ex, ey, u * 0.55 * S);
+        glow.addColorStop(0, `rgba(255, 40, 30, ${0.75 * flicker})`);
+        glow.addColorStop(1, 'rgba(255, 40, 30, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(ex - u * 0.55 * S, ey - u * 0.55 * S, u * 1.1 * S, u * 1.1 * S);
+        ctx.fillStyle = '#ffd6cf';
+        ctx.fillRect(ex - u * 0.06 * S, ey - u * 0.04 * S, u * 0.12 * S, u * 0.08 * S);
+      }
+    }
+  }
+
   private yeti(g: Game, y: Yeti, px: number, py: number) {
     const { ctx, ppm: u } = this;
     const look = LOOKS[y.look];
     const eating = y.state === 'eating';
     const still = y.state === 'holding' || y.stunT > 0;
     const run = still ? 0 : g.time * 10 + y.dx;
-    const bob = eating ? Math.abs(Math.sin(g.time * 14)) * u * 0.15 : Math.abs(Math.sin(run)) * u * 0.12;
+    const bob = this.yetiBob(g, y);
     const S = look.size;
 
     ctx.fillStyle = C.shadow;

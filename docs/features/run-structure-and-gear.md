@@ -106,6 +106,25 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 - **Profile** (local storage): unlocked skiers, highest Altitude, lifetime stats (runs, wins, dogs hit, mushrooms, most mountains cleared, best descents) and Daily results. Locked skiers show how to unlock them.
 - **Altitude:** winning at your highest Altitude unlocks the next, up to 10; pick any unlocked level when starting a run. Each level: yeti +0.8% (all pursuers, still capped at 17.5 m/s), head start −0.2 s (never under 3 s), Condition chance +5% on every slope (so mountain 1 gets Conditions too). Slopes are validated against the faster chaser. Simulated clean-skier bot, whole runs: 99% of descents cleared at Altitude 0, 94% at 5, 77% at 10 (`sim/altitude.ts`).
 - **Daily Seed:** one seed per UTC date, the Rookie, Altitude 0. Doesn't raise Altitude. Best result and attempts are kept per date.
+- **Patches and the Chalet (persistent passives):** every run earns Patches, win or lose: 1 per descent, +3 per Summit, +2 per perfect Slalom or Burning Man inferno, +N for a win at Altitude N, and +5 once ever for each first (first Black Diamond, Avalanche survived, Summit, perfect Slalom, inferno, the mushroom secret, win). At the Chalet (title screen) Patches buy passives; you pin up to 3 to your jacket for the next run (a 4th and 5th pin slot cost 60 and 100). Owning everything never means using everything. Passives never change tuck speed or speed up a pursuer, and the Daily ignores them. About 840 Patches buys everything, roughly 30–40 runs.
+
+| Group | Passive | Ranks (cost) |
+|---|---|---|
+| Kit | Packed Lunch: start with a random Snack | 20 |
+| Kit | Deep Pockets: +1 Snack slot | 40 |
+| Kit | Pocket Money: start with 4 / 8 / 12 Tokens | 15 / 30 / 50 |
+| Kit | Hand-me-downs: start with a random common Gear | 40 |
+| Technique | Second Wind: once per run, a crash is a bounce | 60 |
+| Technique | Quick Feet: get up 10% / 20% faster | 30 / 60 |
+| Technique | Long Pop: jumps and trick pops 8% longer (still short of 3 tricks) | 35 |
+| Avalanche | Avalanche Beacon: the wall stays 2 / 4 / 6 m further back | 25 / 45 / 70 |
+| Avalanche | Snow Sense: avalanches 0.5 m/s slower | 50 |
+| Know-how | Haggler: Lodge −10% | 40 |
+| Know-how | Scout's Eye: Black Diamond rewards offer one more choice | 50 |
+| Know-how | Trail Sense: Trail Maps reach 50% further | 20 |
+
+Avalanche Black Diamonds with Patches (simulated clean bot, mountain 2 / 3): starting kit 0% / 0%; with all avalanche passives 60% / 50%; one speed item + Beacon II 93% / 47%; a full speed-and-control build 97% / 100%. Patches help; a real build is still the sure way.
+- **Lift Passes:** beating a mountain's Summit gives a Lift Pass to start later runs on the next mountain (picked on the skier screen), with +15 Tokens for each mountain skipped (you miss its rewards and Lodge). Lift Pass runs earn Patches but don't raise Altitude; the Daily always starts at mountain 1.
 - **Run summary:** the end screen shows the route taken (one icon per node, the fatal one in red) and a *Copy run summary* button: seed or Daily date, skier, result, descents, Style, time, route, Gear and Curses as plain text, for feedback or sharing.
 
 ### Numbers (first pass)
@@ -142,3 +161,4 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 | v1.5 | 2026-10-18 | M4: profile and skier unlocks, Altitude numbers, Daily Seed, run summary |
 | v1.6 | 2026-10-18 | Slalom bonus stage; Avalanche descents pay 2× Tokens and a guaranteed rare (two on a Black Diamond) |
 | v1.7 | 2026-10-18 | Burning Man bonus stage; bonus stages pay their own way (Slalom payout cut from 45–60 to ~17–22 Tokens) |
+| v1.8 | 2026-10-18 | Patches, the Chalet and 12 persistent passives (pins); Lift Passes |

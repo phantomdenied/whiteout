@@ -2,6 +2,8 @@
 // Each item edits a Mods record that the engine (and the run, for shop/offer effects) reads; nothing
 // checks gear ids directly. Snacks are one-use consumables and live here too.
 
+import { type PassiveRanks, applyPassives } from './passives';
+
 export type Slot = 'skis' | 'boots' | 'poles' | 'charm';
 export type Rarity = 'common' | 'uncommon' | 'rare';
 export type Build = 'tuck' | 'jump' | 'crash' | 'risk';
@@ -65,6 +67,13 @@ export interface Mods {
   snackSlots: number;
   /** Snacks handed out free at every Lodge visit. */
   lodgeSnacks: number;
+  /** Passives: an Avalanche stays this many meters further back, and runs this much slower (m/s). */
+  avalancheLeash: number;
+  avalancheSlow: number;
+  /** Passive: extra reward choices after a Black Diamond. */
+  diamondOffer: number;
+  /** Passive: Trail Map range multiplier. */
+  mapRangeMult: number;
 }
 
 export const BASE_MODS: Mods = {
@@ -103,6 +112,10 @@ export const BASE_MODS: Mods = {
   offerSize: 3,
   snackSlots: 2,
   lodgeSnacks: 0,
+  avalancheLeash: 0,
+  avalancheSlow: 0,
+  diamondOffer: 0,
+  mapRangeMult: 1,
 };
 
 export interface Gear {
@@ -341,11 +354,12 @@ export function gearById(id: string): Gear {
 }
 
 /** Mods from Gear, then Curses, then the starting skier. */
-export function modsFor(ids: readonly string[], curses: readonly string[] = [], skier?: SkierId): Mods {
+export function modsFor(ids: readonly string[], curses: readonly string[] = [], skier?: SkierId, passives: PassiveRanks = {}): Mods {
   const m = { ...BASE_MODS };
   for (const id of ids) gearById(id).apply(m);
   for (const id of curses) curseById(id).apply(m);
   if (skier) SKIERS[skier].apply(m);
+  applyPassives(m, passives);
   m.snackSlots = Math.max(0, m.snackSlots);
   return m;
 }

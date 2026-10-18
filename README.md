@@ -17,6 +17,9 @@ New in M4:
 - **Slalom:** gates on some slopes (they mark a safe line and build your combo), and a no-yeti Slalom bonus stage on the map that pays per gate.
 - **Burning Man** bonus stage: you're on fire in a dense forest. Trees you touch go up in flames for points and feed your flame; rocks still crash you, and if your flame burns out the stage ends.
 - **Avalanche Black Diamonds** (optional): the wall stays 10 m behind you, nearly as fast as your tuck. Built to need speed and control upgrades; pays triple Tokens and two rares.
+- **Patches and the Chalet:** every run earns Patches; spend them on passives (Pocket Money, Second Wind, Avalanche Beacon…) and pin up to 3 for your next run.
+- **Lift Passes:** beat a mountain's Summit to start later runs on the next mountain.
+- **At night** the headlamp is a beam you aim by turning, and the yeti's eyes glow red in the dark.
 - **Attract mode:** the start screen shows the bot skiing demo descents (it comes back after 45 s idle on the title).
 - **Install it:** on iPhone, Share → Add to Home Screen; on Android, the *Install app* button. Works offline once installed.
 
@@ -51,7 +54,8 @@ Code layout:
 - `src/run.ts` — route maps, descent parameters and Conditions, rewards, the Lodge, Warming Huts, Events, save
 - `src/gear.ts` — the 30 Gear, Curses, starting skiers, Snacks, and the mods they apply
 - `src/events.ts` — the Event library
-- `src/profile.ts` — unlocks, Altitude, lifetime stats, Daily results, the run summary text
+- `src/profile.ts` — unlocks, Altitude, lifetime stats, Daily results, Patches, the Chalet, Lift Passes, the run summary text
+- `src/passives.ts` — the persistent passives
 - `src/audio.ts` — synthesized sound (Web Audio)
 - `public/` — PWA manifest, icons, service worker
 - `src/bot.ts` — the clean-skier bot used by `sim/` and tests

@@ -276,6 +276,8 @@ export interface GameOptions {
   params?: SlopeParams;
   mods?: Mods;
   snacks?: SnackId[];
+  /** Second Wind (a passive): one extra crash-to-bounce on this slope, if the run hasn't used it. */
+  extraBounce?: boolean;
   /** Hand-placed obstacles instead of a generated slope (tests). */
   obstacles?: Obstacle[];
 }
@@ -324,7 +326,7 @@ export function newGame(seed: number, opts: GameOptions = {}): Game {
     chain: 0,
     bonusTokens: 0,
     staggerUsed: 0,
-    bouncesLeft: mods.bounces,
+    bouncesLeft: mods.bounces + (opts.extraBounce ? 1 : 0),
     closeCall: false,
     result: null,
     over: false,
@@ -412,7 +414,7 @@ export function useSnack(g: Game, index: number): boolean {
       break;
     case 'map':
       if (!g.line) return false;
-      g.mapUntil = s.y + CFG.mapRange;
+      g.mapUntil = s.y + CFG.mapRange * g.mods.mapRangeMult;
       break;
     case 'warmer':
       if (g.warm) return false;
@@ -785,16 +787,19 @@ function updateWall(g: Game) {
   const s = g.skier;
   const t = g.time - graceFor(g);
   if (t < 0) return;
+  // Passives (Avalanche Beacon, Snow Sense) hold a leashed avalanche further back and slow it.
+  const leash = w.leash ? w.leash + g.mods.avalancheLeash : 0;
+  const slow = w.leash ? g.mods.avalancheSlow : 0;
   if (!w.armed) {
     w.armed = true;
-    w.y = s.y - (w.leash ? w.leash * 2.5 : CFG.yeti.spawnBehind);
+    w.y = s.y - (leash ? leash * 2.5 : CFG.yeti.spawnBehind);
     g.events.push({ type: 'yetiSpawn' });
   }
-  w.v = Math.min(w.max, w.start + (t / w.ramp) * (w.max - w.start));
-  if (w.leash) {
+  w.v = Math.min(w.max, w.start + (t / w.ramp) * (w.max - w.start)) - slow;
+  if (leash) {
     // It roars in until it's right behind you, then never drops back: any crash and it buries you.
-    const v = s.y - w.y > w.leash ? Math.max(w.v, s.speed + 6) : w.v;
-    w.y = Math.max(w.y + v * CFG.dt, s.y - w.leash);
+    const v = s.y - w.y > leash ? Math.max(w.v, s.speed + 6) : w.v;
+    w.y = Math.max(w.y + v * CFG.dt, s.y - leash);
   } else w.y = Math.max(w.y + w.v * CFG.dt, s.y - CFG.yeti.leash * 1.4);
   if (w.y >= s.y && s.state !== 'eaten') {
     s.state = 'eaten';

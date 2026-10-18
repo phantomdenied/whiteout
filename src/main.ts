@@ -21,7 +21,24 @@ import { Sound, type SoundName } from './audio';
 import { SKIERS, SKIER_IDS, SLOT_LABEL, SNACKS, type SkierId, type SnackId, curseById, displaced, gearById } from './gear';
 import { Controls } from './input';
 import { CONDITION_IDS } from './slope';
-import { type Profile, UNLOCKS, isUnlocked, loadProfile, recordDescent, recordRun, runSummaryText } from './profile';
+import { GROUP_NAME, LIFT_PASS_TOKENS, PASSIVES, type PassiveGroup, passiveById } from './passives';
+import {
+  FIRSTS,
+  PATCHES,
+  type Profile,
+  UNLOCKS,
+  buyPassive,
+  buyPinSlot,
+  isUnlocked,
+  loadProfile,
+  nextRankCost,
+  pinSlotCost,
+  pinnedRanks,
+  recordDescent,
+  recordRun,
+  runSummaryText,
+  togglePin,
+} from './profile';
 import { Renderer } from './render';
 import { randomSeed } from './rng';
 import {
@@ -63,6 +80,7 @@ import {
   reroll,
   rerollPrice,
   runMods,
+  secondWindReady,
   sellGear,
   sellPrice,
   serialize,
@@ -110,7 +128,7 @@ const hud = {
 };
 
 /** attract → title → skier → map → (intro → playing ⇄ paused → reward | lodge | hut | event) → map … → won / lost. */
-type Mode = 'attract' | 'title' | 'skier' | 'map' | 'intro' | 'playing' | 'paused' | 'reward' | 'lodge' | 'hut' | 'event' | 'won' | 'lost';
+type Mode = 'attract' | 'title' | 'chalet' | 'skier' | 'map' | 'intro' | 'playing' | 'paused' | 'reward' | 'lodge' | 'hut' | 'event' | 'won' | 'lost';
 let mode: Mode = 'attract';
 let pendingSeed = initialSeed();
 let run: RunState = newRun(pendingSeed);
@@ -134,6 +152,9 @@ let notes: string[] = [];
 /** Profile progress made during the current descent. */
 let dogsHit = 0;
 let mushrooms = 0;
+/** Mountain to start the next run on (a Lift Pass), and Patches the last run earned. */
+let pendingStart = 0;
+let lastPatches = 0;
 let installPrompt: (Event & { prompt: () => Promise<void> }) | null = null;
 
 const sound = new Sound();
@@ -150,7 +171,7 @@ function initialSeed(): number {
 
 /** The descent the run is on, or an endless sandbox slope behind the menus. */
 function descentGame(r: RunState): Game {
-  return newGame(nodeSeed(r), { params: paramsFor(r), mods: runMods(r), snacks: r.snacks });
+  return newGame(nodeSeed(r), { params: paramsFor(r), mods: runMods(r), snacks: r.snacks, extraBounce: secondWindReady(r) });
 }
 /** A real descent for the demo: slopes from all three mountains, now and then a Black Diamond or a Summit. */
 function attractGame(): Game {
@@ -193,7 +214,7 @@ function attractInput(g: Game) {
   return input;
 }
 
-const attracting = () => mode === 'attract' || mode === 'title' || mode === 'skier';
+const attracting = () => mode === 'attract' || mode === 'title' || mode === 'chalet' || mode === 'skier';
 
 function previewGame(): Game {
   return newGame(pendingSeed, { params: { length: 600, difficulty: 2.5, mountain: run.mountain, yetiSpeed: 14, grace: 99 } });
@@ -224,9 +245,10 @@ const saveRun = () => store(SAVE_KEY, run.status === 'won' || run.status === 'lo
 // ---------- Flow ----------
 
 function startRun(skier: SkierId, daily: string | null = null) {
+  const opts = { altitude: pendingAltitude, passives: pinnedRanks(profile), startMountain: Math.min(pendingStart, profile.liftPass) };
   run = daily
     ? newRun(pendingSeed, skier, { daily })
-    : startAt(pendingSeed, skier, START_MOUNTAIN, START_ROW, { altitude: pendingAltitude });
+    : START_MOUNTAIN || START_ROW ? startAt(pendingSeed, skier, START_MOUNTAIN, START_ROW, opts) : newRun(pendingSeed, skier, opts);
   game = previewGame();
   renderer.reset(game);
   setMode('map');
@@ -258,6 +280,8 @@ function descentOver() {
     },
     game.snacks,
   );
+  // Second Wind is spent once the slope's last bounce (its extra one) was used.
+  if (secondWindReady(run) && game.bouncesLeft === 0) run = { ...run, secondWindUsed: true };
   const reached = descentsDone(run);
   if (reached > loadBest()) store(BEST_KEY, String(reached));
   const d = recordDescent(profile, { dogsHit, mushrooms });
@@ -269,6 +293,9 @@ function descentOver() {
     notes.push(`Altitude ${profile.altitude} unlocked: faster yetis, shorter head starts, more Conditions.`);
     pendingAltitude = profile.altitude;
   }
+  if (r.liftPass) notes.push(`Lift Pass: you can now start a run on ${MOUNTAINS[profile.liftPass].name}.`);
+  for (const f of r.firsts) notes.push(`${FIRSTS[f]}: +${PATCHES.first} Patches.`);
+  lastPatches = r.patches;
   if (notes.length) sound.play('unlock');
   setMode(run.status as Mode);
 }
@@ -295,7 +322,7 @@ function setMode(next: Mode) {
   if (attracting() && !wasAttracting) newAttract();
   if (mode !== 'playing' && mode !== 'paused' && !attracting()) saveRun();
   const show: Record<Mode, () => void> = {
-    attract: showAttract, title: showTitle, skier: showSkier, map: showMap, intro: showIntro, paused: showPaused, reward: showReward,
+    attract: showAttract, title: showTitle, chalet: showChalet, skier: showSkier, map: showMap, intro: showIntro, paused: showPaused, reward: showReward,
     lodge: showLodge, hut: showHut, event: showEvent, won: showWon, lost: showLost, playing: () => {},
   };
   show[mode]();
@@ -447,6 +474,7 @@ function showTitle() {
       ${saved ? '<button class="btn" id="continue">Continue</button>' : ''}
       <button class="btn${saved ? ' ghost' : ''}" id="go">New run</button>
       <button class="btn ghost" id="daily">Daily run</button>
+      <button class="btn ghost" id="chalet">Chalet · ${profile.patches} Patches</button>
     </div>
     ${dailyHtml()}
     <span class="meta">${saved ? `Saved run: ${esc(MOUNTAINS[saved.mountain].name)}, ◆ ${saved.tokens} · ` : ''}${best ? `Best: ${best} of ${TOTAL_DESCENTS} descents` : `Seed ${pendingSeed}`}${profile.altitude ? ` · Altitude ${profile.altitude} unlocked` : ''}</span>
@@ -456,6 +484,7 @@ function showTitle() {
     setMode('skier');
   });
   on('#daily', startDaily);
+  on('#chalet', () => setMode('chalet'));
   on('#install', () => {
     void installPrompt?.prompt();
     installPrompt = null;
@@ -469,6 +498,8 @@ function showSkier() {
     <span class="eyebrow">New run · Seed ${pendingSeed}</span>
     <h2>Who's skiing?</h2>
     ${profile.altitude ? altitudePicker() : ''}
+    ${profile.liftPass ? liftPicker() : ''}
+    ${pinsSummary()}
     <div class="offers">${SKIER_IDS.map((id) => {
       const k = SKIERS[id];
       if (!isUnlocked(profile, id)) {
@@ -486,10 +517,73 @@ function showSkier() {
     }).join('')}</div>
     <div class="actions"><button class="btn ghost" id="back">Back</button></div>`;
   on('[data-skier]', (b) => startRun(b.dataset.skier as SkierId));
+  on('[data-start]', (b) => {
+    pendingStart = Number(b.dataset.start);
+    showSkier();
+  });
+  on('#to-chalet', () => setMode('chalet'));
   on('[data-alt]', (b) => {
     pendingAltitude = Number(b.dataset.alt);
     showSkier();
   });
+  on('#back', () => setMode('title'));
+}
+
+function liftPicker(): string {
+  const options = MOUNTAINS.slice(0, profile.liftPass + 1).map((mt, m) =>
+    `<button class="chip-btn${m === pendingStart ? ' on' : ''}" data-start="${m}" aria-pressed="${m === pendingStart}">${m + 1} · ${esc(mt.name)}</button>`);
+  return `<span class="label">Lift Pass · start on${pendingStart ? ` (+${pendingStart * LIFT_PASS_TOKENS} Tokens for what you skip)` : ''}</span>
+    <div class="alt-picker">${options.join('')}</div>`;
+}
+
+function pinsSummary(): string {
+  const pinned = Object.keys(pinnedRanks(profile));
+  const names = pinned.map((id) => esc(passiveById(id).name)).join(', ');
+  return `<p class="meta">${pinned.length ? `Pinned: ${names}` : 'No passives pinned.'} <button class="link" id="to-chalet">Chalet</button></p>`;
+}
+
+/** The Chalet: buy passives with Patches, pin them for the next run. */
+function showChalet() {
+  const groups = (Object.keys(GROUP_NAME) as PassiveGroup[]).map((group) => {
+    const items = PASSIVES.filter((x) => x.group === group).map((x) => {
+      const rank = profile.owned[x.id] ?? 0;
+      const cost = nextRankCost(profile, x.id);
+      const pinned = profile.pins.includes(x.id);
+      const pips = x.costs.map((_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
+      const text = x.ranks[Math.max(0, rank - 1)];
+      const next = rank > 0 && cost !== null ? ` Next: ${esc(x.ranks[rank])}` : '';
+      return `<div class="passive${pinned ? ' pinned' : ''}">
+        <span class="gear-top"><b>${esc(x.name)}</b>${x.costs.length > 1 ? `<span class="pips">${pips}</span>` : ''}</span>
+        <span class="gear-text">${esc(text)}${next}</span>
+        <span class="passive-actions">
+          ${cost !== null ? `<button class="chip-btn" data-buy="${x.id}" ${profile.patches < cost ? 'disabled' : ''}>${rank ? 'Upgrade' : 'Buy'} · ${cost}</button>` : '<span class="tag">Maxed</span>'}
+          ${rank ? `<button class="chip-btn${pinned ? ' on' : ''}" data-pin="${x.id}" ${!pinned && profile.pins.length >= profile.pinSlots ? 'disabled' : ''}>${pinned ? 'Pinned' : 'Pin'}</button>` : ''}
+        </span>
+      </div>`;
+    }).join('');
+    return `<span class="label">${esc(GROUP_NAME[group])}</span><div class="passives">${items}</div>`;
+  }).join('');
+  const slotCost = pinSlotCost(profile);
+  card.innerHTML = `
+    <span class="eyebrow">Between runs</span>
+    <h2>The Chalet</h2>
+    <p>Spend Patches on passives that last, then pin up to ${profile.pinSlots} to your jacket for the next run. Every run earns Patches, win or lose. The Daily ignores passives.</p>
+    <div class="results">
+      <div><b>${profile.patches}</b><span>Patches</span></div>
+      <div><b>${profile.pins.length}/${profile.pinSlots}</b><span>pinned</span></div>
+      <div><b>${profile.liftPass + 1}</b><span>Lift Pass</span></div>
+    </div>
+    ${slotCost !== null ? `<button class="btn ghost small" id="slot" ${profile.patches < slotCost ? 'disabled' : ''}>Another pin slot · ${slotCost} Patches</button>` : ''}
+    ${groups}
+    <div class="actions"><button class="btn" id="back">Done</button></div>`;
+  const save = (next: Profile) => {
+    profile = next;
+    store(PROFILE_KEY, JSON.stringify(profile));
+    showChalet();
+  };
+  on('[data-buy]', (b) => save(buyPassive(profile, b.dataset.buy!)));
+  on('[data-pin]', (b) => save(togglePin(profile, b.dataset.pin!)));
+  on('#slot', () => save(buyPinSlot(profile)));
   on('#back', () => setMode('title'));
 }
 
@@ -831,9 +925,9 @@ function endActions() {
 function endMeta(): string {
   if (run.daily) {
     const d = profile.daily[run.daily];
-    return `Daily ${run.daily}${d ? ` · Your best today: ${d.won ? 'won' : `${d.descents}/${TOTAL_DESCENTS}`} · ${d.attempts} ${d.attempts === 1 ? 'try' : 'tries'}` : ''}`;
+    return `${lastPatches ? `+${lastPatches} Patches · ` : ''}Daily ${run.daily}${d ? ` · Your best today: ${d.won ? 'won' : `${d.descents}/${TOTAL_DESCENTS}`} · ${d.attempts} ${d.attempts === 1 ? 'try' : 'tries'}` : ''}`;
   }
-  return `${run.altitude ? `Altitude ${run.altitude} · ` : ''}◆ ${run.tokens} Tokens · Seed ${run.seed}`;
+  return `${lastPatches ? `+${lastPatches} Patches · ` : ''}${run.altitude ? `Altitude ${run.altitude} · ` : ''}◆ ${run.tokens} Tokens · Seed ${run.seed}`;
 }
 
 function showWon() {

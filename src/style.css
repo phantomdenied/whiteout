@@ -919,3 +919,69 @@ body {
     animation: none;
   }
 }
+
+/* The Chalet: passives with rank pips, buy and pin buttons. */
+.passives {
+  display: grid;
+  gap: 8px;
+}
+
+.passive {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: rgba(238, 243, 247, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(238, 243, 247, 0.12);
+}
+
+.passive.pinned {
+  box-shadow: inset 0 0 0 2px var(--boundary);
+}
+
+.passive .gear-text {
+  color: rgba(238, 243, 247, 0.8);
+  font-size: 13px;
+}
+
+.passive-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.passive-actions .chip-btn {
+  min-height: 32px;
+}
+
+.pips {
+  display: flex;
+  gap: 3px;
+}
+
+.pips i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px rgba(238, 243, 247, 0.5);
+}
+
+.pips i.on {
+  background: var(--boundary);
+  box-shadow: none;
+}
+
+.chip-btn:disabled {
+  opacity: 0.4;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--boundary);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}

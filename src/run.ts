@@ -19,6 +19,7 @@ import {
   gearById,
   modsFor,
 } from './gear';
+import { LIFT_PASS_TOKENS, type PassiveRanks, rankOf } from './passives';
 import { createRng } from './rng';
 import { type BossKind, CONDITION_IDS, type Condition, type SlopeParams, mix } from './slope';
 
@@ -125,6 +126,12 @@ export interface RunState {
   altitude: number;
   /** The Daily Seed's date (YYYY-MM-DD, UTC), or null for a normal run. */
   daily: string | null;
+  /** Passives pinned for this run, with ranks (empty on the Daily). */
+  passives: PassiveRanks;
+  /** Second Wind (once per run) has been spent. */
+  secondWindUsed: boolean;
+  /** The mountain the run started on (a Lift Pass skips earlier ones). */
+  startMountain: number;
   log: LogEntry[];
   mountain: number;
   map: MountainMap;
@@ -212,15 +219,31 @@ export const currentNode = (run: RunState): MapNode | null =>
 
 // ---------- Runs ----------
 
-export function newRun(seed: number, skier: SkierId = 'rookie', opts: { altitude?: number; daily?: string | null } = {}): RunState {
-  return {
+export interface RunOptions {
+  altitude?: number;
+  daily?: string | null;
+  /** Pinned passives and their ranks. */
+  passives?: PassiveRanks;
+  /** Start on this mountain (a Lift Pass). */
+  startMountain?: number;
+}
+
+export function newRun(seed: number, skier: SkierId = 'rookie', opts: RunOptions = {}): RunState {
+  const daily = opts.daily ?? null;
+  // The Daily is the same for everyone: no passives, no Lift Pass.
+  const passives = daily ? {} : { ...(opts.passives ?? {}) };
+  const start = daily ? 0 : Math.max(0, Math.min(MOUNTAINS.length - 1, Math.floor(opts.startMountain ?? 0)));
+  const run: RunState = {
     seed: seed >>> 0,
     skier,
     altitude: Math.max(0, Math.min(MAX_ALTITUDE, Math.floor(opts.altitude ?? 0))),
-    daily: opts.daily ?? null,
+    daily,
+    passives,
+    secondWindUsed: false,
+    startMountain: start,
     log: [],
-    mountain: 0,
-    map: generateMap(seed >>> 0, 0),
+    mountain: start,
+    map: generateMap(seed >>> 0, start),
     row: 0,
     path: [],
     gear: [...SKIERS[skier].gear],
@@ -233,10 +256,25 @@ export function newRun(seed: number, skier: SkierId = 'rookie', opts: { altitude
     shop: null,
     note: null,
   };
+  return withStartingPassives(run);
+}
+
+/** Kit passives and Lift Pass Tokens, applied once at the start of a run (seeded, so replays match). */
+function withStartingPassives(run: RunState): RunState {
+  const rng = createRng(mix(run.seed, 7000));
+  const p = run.passives;
+  let { tokens, snacks, gear } = run;
+  tokens += [0, 4, 8, 12][Math.min(3, rankOf(p, 'pocket-money'))] + run.startMountain * LIFT_PASS_TOKENS;
+  if (rankOf(p, 'packed-lunch')) snacks = [...snacks, SNACK_IDS[Math.floor(rng() * SNACK_IDS.length)]];
+  if (rankOf(p, 'hand-me-downs')) {
+    const pool = GEAR.filter((g) => g.rarity === 'common' && !gear.includes(g.id) && canWear(g.id, run.skier));
+    if (pool.length) gear = addGear(gear, pool[Math.floor(rng() * pool.length)].id, run.skier);
+  }
+  return { ...run, tokens, snacks, gear };
 }
 
 /** A fresh run starting at a mountain (and optionally a row), always taking the first branch (dev: ?mountain=N&row=R). */
-export function startAt(seed: number, skier: SkierId, mountain: number, row = 0, opts: { altitude?: number; daily?: string | null } = {}): RunState {
+export function startAt(seed: number, skier: SkierId, mountain: number, row = 0, opts: RunOptions = {}): RunState {
   const m = Math.max(0, Math.min(MOUNTAINS.length - 1, Math.floor(mountain)));
   let run: RunState = { ...newRun(seed, skier, opts), mountain: m, map: generateMap(seed >>> 0, m) };
   const r = Math.max(0, Math.min(SUMMIT_ROW, Math.floor(row)));
@@ -244,7 +282,9 @@ export function startAt(seed: number, skier: SkierId, mountain: number, row = 0,
   return run;
 }
 
-export const runMods = (run: RunState) => modsFor(run.gear, run.curses, run.skier);
+export const runMods = (run: RunState) => modsFor(run.gear, run.curses, run.skier, run.passives);
+/** Second Wind is pinned and not yet spent this run. */
+export const secondWindReady = (run: RunState) => rankOf(run.passives, 'second-wind') > 0 && !run.secondWindUsed;
 export const snackSlots = (run: RunState) => runMods(run).snackSlots;
 /** Descents cleared (bonus stages don't count toward the 15). */
 export const descentsDone = (run: RunState) => run.results.filter((r) => r.cleared && !BONUS_KINDS.includes(r.kind)).length;
@@ -439,7 +479,8 @@ function rollGearAtLeast(rng: () => number, run: RunState, rarity: Rarity, build
  */
 export function rollOffer(run: RunState): OfferItem[] {
   const rng = createRng(mix(run.seed, 5000 + run.mountain * 100 + run.row * 10 + (run.path[run.row] ?? 0)));
-  const size = runMods(run).offerSize;
+  const mods = runMods(run);
+  const size = mods.offerSize + (currentNode(run)?.kind === 'diamond' ? mods.diamondOffer : 0);
   const items: OfferItem[] = rollGear(rng, run, size).map((id) => ({ kind: 'gear', id }));
   // Black Diamonds and Avalanches each guarantee a rare (an Avalanche Black Diamond, two).
   const rares = (currentNode(run)?.kind === 'diamond' ? 1 : 0) + (paramsFor(run).condition === 'avalanche' ? 1 : 0);
@@ -685,7 +726,10 @@ export function deserialize(text: string | null): RunState | null {
     if (!run.curses.every((id) => CURSES.some((c) => c.id === id))) return null;
     if (!(run.skier in SKIERS)) return null;
     // Saves from before Altitude and the Daily Seed: fill in the defaults.
-    return { ...run, altitude: run.altitude ?? 0, daily: run.daily ?? null, log: run.log ?? [] };
+    return {
+      ...run, altitude: run.altitude ?? 0, daily: run.daily ?? null, log: run.log ?? [],
+      passives: run.passives ?? {}, secondWindUsed: run.secondWindUsed ?? false, startMountain: run.startMountain ?? 0,
+    };
   } catch {
     return null;
   }
