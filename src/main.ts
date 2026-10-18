@@ -383,8 +383,12 @@ document.addEventListener('visibilitychange', () => document.hidden && pause());
 document.addEventListener('click', () => mode === 'attract' && performance.now() - splashSkipped > 500 && setMode('title'));
 for (const type of ['pointerdown', 'keydown'] as const) document.addEventListener(type, () => (lastInput = performance.now()), { capture: true });
 // Audio may only start from a user gesture.
-document.addEventListener('pointerdown', () => sound.unlock(), { capture: true });
-document.addEventListener('keydown', () => sound.unlock(), { capture: true });
+// Audio may only start from a user gesture, and iOS only counts a finished tap (touchend / click), not
+// pointerdown, so listen for all of them. Coming back to the page also needs a nudge (iOS "interrupts" audio).
+for (const type of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'] as const) {
+  document.addEventListener(type, () => sound.unlock(), { capture: true, passive: true });
+}
+document.addEventListener('visibilitychange', () => !document.hidden && sound.unlock());
 card.addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest('button');
   if (!b) return;

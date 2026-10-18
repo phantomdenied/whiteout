@@ -48,14 +48,30 @@ export class Sound {
   /** Create (or resume) the audio context. Call from a click / tap handler. */
   unlock() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      // iOS only starts audio from a finished tap (touchend / click), and suspends or "interrupts" it when the
+      // phone locks or another app takes over: keep nudging it until it's running.
+      if (this.ctx.state !== 'running') {
+        void this.ctx.resume();
+        this.blip();
+      }
       return;
     }
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
+    // iOS 17+: treat this as game audio, so it plays even with the ring/silent switch on silent.
+    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (session) {
+      try {
+        session.type = 'playback';
+      } catch {
+        // Not allowed here: the silent switch will mute the game, as for any web page.
+      }
+    }
     try {
       const ctx = new Ctx();
       this.ctx = ctx;
+      if (ctx.state !== 'running') void ctx.resume();
+      this.blip();
       this.master = ctx.createGain();
       this.master.gain.value = this.muted ? 0 : MASTER;
       this.master.connect(ctx.destination);
@@ -143,6 +159,25 @@ export class Sound {
       loop.rate = r;
       loop.src.playbackRate.setTargetAtTime(r, t, 0.2);
     }
+  }
+
+  /** Play one silent sample: the classic way to unlock audio on iOS from inside a user gesture. */
+  private blip() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      const src = ctx.createBufferSource();
+      src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch {
+      // Ignore: the next gesture tries again.
+    }
+  }
+
+  /** Is the audio actually running (not suspended or interrupted)? */
+  get running() {
+    return this.ctx?.state === 'running';
   }
 
   setMuted(muted: boolean) {
