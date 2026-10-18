@@ -58,6 +58,7 @@ const SNOW = [
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private w = 0;
+  private dpr = 1;
   private h = 0;
   private ppm = 16;
   private camX = 0;
@@ -70,13 +71,21 @@ export class Renderer {
     this.resize();
   }
 
+  /**
+   * Match the canvas's pixel buffer to its size on screen. Called every frame (cheap when nothing
+   * changed), because iOS Safari fires resize events before the new size settles (toolbars showing
+   * or hiding, rotation), and a stale buffer gets stretched to fit, squashing the whole slope.
+   */
   resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const rect = this.canvas.getBoundingClientRect();
-    this.w = rect.width;
-    this.h = rect.height;
-    this.canvas.width = Math.round(rect.width * dpr);
-    this.canvas.height = Math.round(rect.height * dpr);
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
+    if (w === this.w && h === this.h && dpr === this.dpr) return;
+    this.w = w;
+    this.h = h;
+    this.dpr = dpr;
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.ppm = Math.min(this.w / VIEW_WIDTH_M, this.h / VIEW_HEIGHT_M) * 1.15;
   }
@@ -93,6 +102,7 @@ export class Renderer {
   }
 
   draw(g: Game, frameDt: number) {
+    this.resize();
     const { ctx, w, h, ppm } = this;
     const s = g.skier;
     this.camX += (s.x - this.camX) * Math.min(1, frameDt * 6);
