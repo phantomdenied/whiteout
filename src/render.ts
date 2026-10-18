@@ -1,6 +1,6 @@
 // Canvas renderer. Placeholder art, all drawn from shapes (original, not SkiFree's sprites).
 // The camera keeps the skier about 30% from the top so most of the screen shows the slope ahead.
-import { CFG, type Game, type Obstacle, airborne, yetiProximity } from './engine';
+import { CFG, type Game, type Obstacle, type Yeti, type YetiLook, airborne, yetiProximity } from './engine';
 import { SLOPE } from './slope';
 
 const C = {
@@ -29,15 +29,25 @@ const C = {
   pants: '#24364a',
   helmet: '#f4c430',
   ski: '#14212b',
-  yetiFur: '#e9f1f7',
-  yetiShade: '#a9c0d2',
-  yetiFace: '#2a3d63',
   yetiEye: '#ffb000',
+  wall: '#ffffff',
+  wallBody: '#b9cddd',
+  wallShade: '#8fa9bf',
+  map: 'rgba(242, 140, 40, 0.85)',
 };
 
 const VIEW_WIDTH_M = 26;
 const VIEW_HEIGHT_M = 44;
 const SKIER_SCREEN_Y = 0.3;
+/** While a boss waits behind you, the camera looks back so you can see it. */
+const BOSS_LOOK_Y = 0.62;
+/** Fur, shade and face per pursuer; size multiplier. Bosses read as different animals at a glance. */
+const LOOKS: Record<YetiLook, { fur: string; shade: string; face: string; size: number }> = {
+  yeti: { fur: '#e9f1f7', shade: '#a9c0d2', face: '#2a3d63', size: 1.25 },
+  big: { fur: '#dfe8ef', shade: '#8ea8bd', face: '#1d2c4a', size: 1.9 },
+  twin: { fur: '#efe6f2', shade: '#b8a3c4', face: '#4a2d63', size: 1.2 },
+  old: { fur: '#c9d3db', shade: '#7f8f9c', face: '#141c2b', size: 1.6 },
+};
 /** Snow and grain per mountain: groomed resort, shaded forest, bright alpine. */
 const SNOW = [
   { snow: '#f3f6f9', speck: '#dbe5ee' },
@@ -51,6 +61,7 @@ export class Renderer {
   private h = 0;
   private ppm = 16;
   private camX = 0;
+  private camFrac = SKIER_SCREEN_Y;
   private shake = 0;
   private trail: { x: number; y: number; a: number }[] = [];
 
@@ -72,6 +83,7 @@ export class Renderer {
 
   reset(g: Game) {
     this.camX = g.skier.x;
+    this.camFrac = g.yetis.some((y) => y.state === 'holding') || g.wall ? BOSS_LOOK_Y : SKIER_SCREEN_Y;
     this.trail = [];
     this.shake = 0;
   }
@@ -87,7 +99,9 @@ export class Renderer {
     this.shake = Math.max(0, this.shake - frameDt * 30);
     const sx = (Math.random() - 0.5) * this.shake;
     const sy = (Math.random() - 0.5) * this.shake;
-    const camY = s.y - (h * SKIER_SCREEN_Y) / ppm;
+    const lookBack = g.yetis.some((y) => y.state === 'holding');
+    this.camFrac += ((lookBack ? BOSS_LOOK_Y : SKIER_SCREEN_Y) - this.camFrac) * Math.min(1, frameDt * 1.5);
+    const camY = s.y - (h * this.camFrac) / ppm;
     const toX = (x: number) => w / 2 + (x - this.camX) * ppm + sx;
     const toY = (y: number) => (y - camY) * ppm + sy;
 
@@ -154,6 +168,21 @@ export class Renderer {
       ctx.fillText('FINISH', toX(0), fy - ppm * 2.55);
     }
 
+    // Trail Map: the clean line, dashed, for the next stretch.
+    if (g.line && g.mapUntil > s.y) {
+      ctx.strokeStyle = C.map;
+      ctx.lineWidth = Math.max(2, ppm * 0.15);
+      ctx.setLineDash([ppm * 0.6, ppm * 0.5]);
+      ctx.beginPath();
+      const end = Math.min(g.mapUntil, g.line.length - 1, camY + h / ppm + 2);
+      for (let y = Math.max(0, Math.floor(s.y)); y <= end; y++) {
+        if (y === Math.max(0, Math.floor(s.y))) ctx.moveTo(toX(g.line[y]), toY(y));
+        else ctx.lineTo(toX(g.line[y]), toY(y));
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // Depth-sort everything by its ground y.
     type Drawable = { y: number; draw: () => void };
     const list: Drawable[] = [];
@@ -179,15 +208,49 @@ export class Renderer {
         ctx.stroke();
       }
     }
-    const yeti = g.yeti;
-    if (yeti.state !== 'waiting') list.push({ y: yeti.y + 0.01, draw: () => this.yeti(g, toX(yeti.x), toY(yeti.y)) });
+    const drawYetis = () => {
+      for (const yeti of g.yetis) if (yeti.state !== 'waiting') this.yeti(g, yeti, toX(yeti.x), toY(yeti.y));
+    };
+    // With an avalanche, pursuers ride on top of it; otherwise they're depth-sorted with everything else.
+    if (!g.wall) {
+      for (const yeti of g.yetis) {
+        if (yeti.state !== 'waiting') list.push({ y: yeti.y + 0.01, draw: () => this.yeti(g, yeti, toX(yeti.x), toY(yeti.y)) });
+      }
+    }
     list.sort((a, b) => a.y - b.y);
     for (const d of list) d.draw();
 
-    // Off-screen yeti arrow at the top edge.
-    if (yeti.state === 'chasing' && toY(yeti.y) < 0) {
+    // The Old One's avalanche: everything uphill of its front is buried in snow.
+    if (g.wall) {
+      const wy = toY(g.wall.y);
+      if (wy > 0) {
+        // Churning front (white), then the body of the slide behind it, darkening uphill.
+        const body = ctx.createLinearGradient(0, wy, 0, Math.max(0, wy - ppm * 12));
+        body.addColorStop(0, C.wallBody);
+        body.addColorStop(1, C.wallShade);
+        ctx.fillStyle = body;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        for (let x = 0; x <= w; x += 12) ctx.lineTo(x, wy + Math.sin(x * 0.07 + g.time * 6) * 6 - 4);
+        ctx.lineTo(w, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = C.wall;
+        for (let x = 0; x <= w; x += 22) {
+          const r = ppm * (0.7 + 0.4 * Math.sin(x * 0.3 + g.time * 4));
+          ctx.beginPath();
+          ctx.arc(x, wy + Math.sin(x * 0.11 - g.time * 5) * 4, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      drawYetis();
+    }
+
+    // Off-screen pursuer arrows at the top edge.
+    const p = yetiProximity(g);
+    for (const yeti of g.yetis) {
+      if ((yeti.state !== 'chasing' && yeti.state !== 'holding') || toY(yeti.y) >= 0) continue;
       const ax = Math.max(24, Math.min(w - 24, toX(yeti.x)));
-      const p = yetiProximity(g);
       ctx.fillStyle = `rgba(214, 69, 43, ${0.35 + p * 0.6})`;
       ctx.beginPath();
       ctx.moveTo(ax, 98);
@@ -428,13 +491,14 @@ export class Renderer {
     }
   }
 
-  private yeti(g: Game, px: number, py: number) {
+  private yeti(g: Game, y: Yeti, px: number, py: number) {
     const { ctx, ppm: u } = this;
-    const y = g.yeti;
+    const look = LOOKS[y.look];
     const eating = y.state === 'eating';
-    const run = g.time * 10;
+    const still = y.state === 'holding' || y.stunT > 0;
+    const run = still ? 0 : g.time * 10 + y.dx;
     const bob = eating ? Math.abs(Math.sin(g.time * 14)) * u * 0.15 : Math.abs(Math.sin(run)) * u * 0.12;
-    const S = 1.25;
+    const S = look.size;
 
     ctx.fillStyle = C.shadow;
     ctx.beginPath();
@@ -445,12 +509,12 @@ export class Renderer {
     ctx.translate(px, py - bob);
     ctx.scale(S, S);
     // Legs.
-    ctx.fillStyle = C.yetiShade;
+    ctx.fillStyle = look.shade;
     const stride = eating ? 0 : Math.sin(run) * u * 0.18;
     ctx.fillRect(-u * 0.42, -u * 0.6 + stride, u * 0.3, u * 0.6 - stride);
     ctx.fillRect(u * 0.12, -u * 0.6 - stride, u * 0.3, u * 0.6 + stride);
     // Shaggy body: a lumpy outline.
-    ctx.fillStyle = C.yetiFur;
+    ctx.fillStyle = look.fur;
     ctx.beginPath();
     const cx = 0;
     const cy = -u * 1.35;
@@ -464,7 +528,7 @@ export class Renderer {
     }
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = C.yetiShade;
+    ctx.strokeStyle = look.shade;
     ctx.lineWidth = Math.max(1, u * 0.05);
     ctx.stroke();
     // Arms up when it's close or eating.
@@ -473,13 +537,13 @@ export class Renderer {
       ctx.save();
       ctx.translate(side * u * 0.62, -u * 1.55);
       ctx.rotate(side * (0.4 + reach * 1.6 + (eating ? Math.sin(g.time * 14) * 0.3 : Math.sin(run) * 0.25)));
-      ctx.fillStyle = C.yetiFur;
+      ctx.fillStyle = look.fur;
       ctx.fillRect(-u * 0.14, 0, u * 0.28, u * 0.85);
       ctx.strokeRect(-u * 0.14, 0, u * 0.28, u * 0.85);
       ctx.restore();
     }
     // Face.
-    ctx.fillStyle = C.yetiFace;
+    ctx.fillStyle = look.face;
     ctx.beginPath();
     ctx.ellipse(0, -u * 1.6, u * 0.38, u * 0.3, 0, 0, Math.PI * 2);
     ctx.fill();

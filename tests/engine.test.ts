@@ -243,3 +243,147 @@ describe('gear', () => {
   });
 });
 
+describe('new gear', () => {
+  it('Twin Tips doubles trick Style', () => {
+    const g = slope([], ['twin-tips']);
+    run(g, 1);
+    jumpOnce(g);
+    run(g, 0.1);
+    jumpOnce(g);
+    run(g, 1);
+    expect(g.events.find((e) => e.type === 'land')).toMatchObject({ tricks: 1, style: 100 });
+  });
+
+  it('Air Bag turns a botched landing into a safe one', () => {
+    const g = slope([], ['air-bag']);
+    run(g, 1);
+    jumpOnce(g);
+    run(g, CFG.hopAir - 0.1);
+    jumpOnce(g);
+    run(g, 0.5);
+    expect(g.events.some((e) => e.type === 'safeLanding')).toBe(true);
+    expect(g.skier.state).toBe('ski');
+  });
+
+  it('Stunt Double bounces off rocks every time; Insurance pays for real crashes', () => {
+    const g = slope([ob('rock', 0, 10), ob('rock', 0, 20), ob('tree', 0, 30)], ['stunt-double', 'insurance']);
+    run(g, 8);
+    expect(g.events.filter((e) => e.type === 'bounce')).toHaveLength(2);
+    expect(g.events.filter((e) => e.type === 'crash')).toHaveLength(1);
+    expect(g.bonusTokens).toBe(1);
+  });
+
+  it('Helmet Cam keeps the combo through a crash', () => {
+    const g = slope([ob('tree', 1.2, 30), ob('tree', 0, 45)], ['helmet-cam']);
+    run(g, 6);
+    expect(g.events.some((e) => e.type === 'crash')).toBe(true);
+    expect(g.chain).toBe(1);
+  });
+
+  it('Snowshoes ride through moguls at full speed', () => {
+    const g = slope([ob('moguls', 0, 12)], ['snowshoes']);
+    run(g, 2);
+    expect(g.events.some((e) => e.type === 'moguls')).toBe(false);
+  });
+
+  it('Ramp Rat pays a Token per ramp', () => {
+    const g = slope([ob('ramp', 0, 10)], ['ramp-rat']);
+    run(g, 3);
+    expect(g.bonusTokens).toBe(1);
+  });
+
+  it('Downhill Suit fires a boost after 4 s of tuck; Carbon Poles accelerate faster', () => {
+    const g = slope([], ['downhill-suit']);
+    run(g, 4.1, tuck);
+    expect(g.skier.boostT).toBeGreaterThan(0);
+    const poles = slope([], ['carbon-poles']);
+    run(poles, 1);
+    const plain = slope();
+    run(plain, 1);
+    expect(poles.skier.speed).toBeGreaterThan(plain.skier.speed);
+  });
+
+  it('Close Call multiplies Style when you finish with the yeti close; Yeti Bait makes it ×3', () => {
+    const params = { length: 300, difficulty: 1, mountain: 0, yetiSpeed: 14, grace: 3 };
+    for (const [gear, mult] of [[[], 1.5], [['yeti-bait'], 3]] as const) {
+      const g = newGame(1, { obstacles: [], params, mods: modsFor([...gear]) });
+      while (g.skier.y < 290) step(g, tuck);
+      g.yeti.y = g.skier.y - 5;
+      g.yeti.x = g.skier.x;
+      run(g, 2, tuck);
+      expect(g.closeCall, `${gear}`).toBe(true);
+      expect(style(g)).toBe(Math.floor((Math.floor(g.maxY) + Math.floor(g.skillStyle)) * mult));
+    }
+  });
+});
+
+describe('snacks', () => {
+  it('Cocoa: instant tuck speed and a boost', () => {
+    const g = newGame(1, { obstacles: [], snacks: ['cocoa'] });
+    step(g, { ...NO_INPUT, snack: 0 });
+    expect(g.skier.speed).toBeGreaterThan(CFG.tuck - 0.5);
+    expect(g.skier.boostT).toBeGreaterThan(0);
+    expect(g.snacks).toEqual([]);
+  });
+
+  it('Fish only works on a chasing yeti, and stops it', () => {
+    const g = newGame(1, { obstacles: [], snacks: ['fish'] });
+    step(g, { ...NO_INPUT, snack: 0 });
+    expect(g.snacks).toEqual(['fish']);
+    run(g, CFG.yeti.grace + 0.5, tuck);
+    step(g, { ...tuck, snack: 0 });
+    expect(g.snacks).toEqual([]);
+    expect(g.yeti.stunT).toBeGreaterThan(1.9);
+  });
+
+  it('Hand Warmer shortens the next crash only', () => {
+    const g = newGame(1, { obstacles: [ob('tree', 0, 10)], snacks: ['warmer'] });
+    step(g, { ...NO_INPUT, snack: 0 });
+    run(g, 2);
+    expect(g.events.some((e) => e.type === 'crash')).toBe(true);
+    expect(g.skier.state).toBe('ski');
+    expect(g.warm).toBe(false);
+  });
+
+  it('Trail Map reveals the line on a generated slope', () => {
+    const g = newGame(4, { params: { length: 600, difficulty: 3, mountain: 0, yetiSpeed: 14, grace: 8 }, snacks: ['map'] });
+    step(g, { ...NO_INPUT, snack: 0 });
+    expect(g.mapUntil).toBeGreaterThan(190);
+  });
+});
+
+describe('bosses', () => {
+  const summit = (boss: 'big' | 'twins' | 'old') => newGame(1, { obstacles: [], params: { length: 1200, difficulty: 3, mountain: 0, yetiSpeed: 17, grace: 3, boss } });
+
+  it('a boss is visible from the start and holds until the grace ends', () => {
+    const g = summit('big');
+    run(g, 1, tuck);
+    expect(g.yeti.state).toBe('holding');
+    expect(g.yeti.look).toBe('big');
+    run(g, 2.5, tuck);
+    expect(g.yeti.state).toBe('chasing');
+  });
+
+  it('the Twins are two yetis; a clean tuck still outruns both', () => {
+    const g = summit('twins');
+    expect(g.yetis).toHaveLength(2);
+    run(g, 80, tuck);
+    expect(g.result).toBe('cleared');
+  });
+
+  it('the Old One buries a skier who stops', () => {
+    const g = summit('old');
+    expect(g.wall).not.toBeNull();
+    run(g, 40, { ...NO_INPUT, targetAngle: Math.PI / 2 });
+    expect(g.result).toBe('eaten');
+  });
+
+  it('a clean tuck beats every boss on an open slope', () => {
+    for (const boss of ['big', 'twins', 'old'] as const) {
+      const g = summit(boss);
+      run(g, 90, tuck);
+      expect(g.result, boss).toBe('cleared');
+    }
+  });
+});
+

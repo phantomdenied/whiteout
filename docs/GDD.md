@@ -1,6 +1,6 @@
 # Whiteout — Game Design Document (Master)
 
-> **Version:** v1.2 · **Status:** Draft · **Last updated:** 2026-10-17
+> **Version:** v1.3 · **Status:** Draft · **Last updated:** 2026-10-17
 > **Working title:** *Whiteout* (placeholder — rename freely)
 
 This is the master document. It stays short and links out to Feature Documents for the detail. If a Feature Document and this file disagree, **the Feature Document is authoritative** for its system and this file should be fixed.
@@ -170,7 +170,7 @@ Same stack as Spindle: TypeScript + Vite + Vitest. The game is drawn on a 2D can
 |---|---|---|
 | **M0 — Feel** (built; playtest pending) | One endless slope: steering, tuck, jump, crash, 6 obstacle types, the yeti chase. Placeholder art. | Five people play on a phone; controls feel good within 30 s; the yeti is scary. |
 | **M1 — Slopes** (built) | Chunk library, seeded generation, finish gate, difficulty budget, 3 mountains in a straight line, reward pick of 1 in 3 (10 Gear). | A run starts, ends, and can be replayed from a seed. The simulator shows every slope is clearable without Gear. |
-| **M2 — Builds** | Tokens, the Lodge, Snacks, 30 Gear, the Summit bosses. | Three distinct builds are viable in playtests. |
+| **M2 — Builds** (built; playtest pending) | Tokens, the Lodge, Snacks, 30 Gear, the Summit bosses. | Three distinct builds are viable in playtests. |
 | **M3 — Roguelike** | Route map, Black Diamonds, Events, Conditions, 4 starting skiers. | Average run length 20–30 min; no single dominant route. |
 | **M4 — Ship** | Unlocks, Daily Seed, final art and audio, PWA, save and resume. | Ready for the store. |
 
@@ -219,3 +219,4 @@ Same stack as Spindle: TypeScript + Vite + Vitest. The game is drawn on a 2D can
 | v1.0 | 2026-10-17 | First draft (gdd init) |
 | v1.1 | 2026-10-17 | Audit fixes: 6-row maps (4 slopes + 2 stops), pursuer cap, 3 s minimum grace, Hot Cocoa node → Warming Hut, Peaks → Altitude, glossary completed |
 | v1.2 | 2026-10-18 | M0 and M1 prototypes built |
+| v1.3 | 2026-10-18 | M2 prototype built |

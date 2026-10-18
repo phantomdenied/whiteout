@@ -1,6 +1,6 @@
 # Run Structure & Gear — Feature Document
 
-> **Version:** v1.2 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.3 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > Turn a great one-minute descent into a 20–30 minute run where your choices compound. Gear should change *how* you ski (P2), and routes should trade risk for reward.
@@ -8,6 +8,8 @@
 ## Core Mechanics
 
 ### Run shape
+**Built in M2 (no route map yet):** each mountain is a fixed line: Slope, Slope, Lodge, Slope, Slope, Lodge, Summit. That is the row pattern below with one node per row; branching, Warming Huts, Events and Black Diamonds arrive with the route map in M3. Runs save between stages (Continue on the title screen).
+
 ```
 Skier pick ─▶ Mountain 1 map ─▶ … ─▶ Summit 1 ─▶ Mountain 2 map ─▶ … ─▶ Summit 2 ─▶ Mountain 3 ─▶ Summit 3 = WIN
 ```
@@ -49,24 +51,18 @@ After each Slope or Black Diamond: choose 1 of 3 (Gear, Snack, or Tokens). Rarit
 - **Slots:** Skis (1), Boots (1), Poles (1), and **Charms** (5). Slot items change core handling; Charms are rule-benders.
 - Sell for half price at the Lodge.
 
-**Sample Gear** (first pass; the goal is roughly 30 at M2):
-| Gear | Slot | Effect | Build |
-|---|---|---|---|
-| Racing Skis | Skis | Tuck speed +15%; turning in a tuck is even wider | Tuck |
-| Twin Tips | Skis | You can land backwards; landing backwards scores ×2 trick Style | Trick |
-| Rocket Boots | Boots | The secret turbo: every near miss fires a 1 s speed burst (×1.4 top speed) | Tuck |
-| Spring Boots | Boots | Jump from flat ground as high as off a ramp | Jump |
-| Ice Picks | Poles | Turn three times faster in the air | Jump |
-| Matchbook | Charm | Dead trees you jump over burn and stagger the yeti by 1 s | Jump |
-| Mushroom Forager | Charm | Jumping over a stump forages a mushroom: +1 Token and a 1.5 s speed boost | Jump |
-| Good Boy | Charm | Hitting a dog doesn't crash you; you get a 1 s speed boost instead. The dog is fine. | Crash |
-| Bubble Wrap | Charm | Crash downtime −50% | Crash |
-| Rubber Chicken | Charm | The first crash each slope makes you bounce instead (no crash) | Crash |
-| Lift Pass | Charm | Once per slope, grab a chairlift cable to skip 40 m forward | Utility |
-| Yeti Musk | Charm | Grace +3 s, but the yeti is 5% faster | Risk |
-| Whiteout Goggles | Charm | Fog and Night have no effect | Utility |
+**The 30 Gear (M2).** Slots: Skis, Boots, Poles take one item each; Charms take five. A second item in a full slot replaces the oldest.
 
-**In M1:** the 10 Gear in the pool are Racing Skis, Rocket Boots, Spring Boots, Ice Picks, Matchbook, Mushroom Forager, Good Boy, Bubble Wrap, Rubber Chicken and Yeti Musk. Twin Tips, Lift Pass and Whiteout Goggles wait for backwards landings, chairlifts and Conditions.
+| Build | Gear (slot, rarity): effect |
+|---|---|
+| Tuck | Racing Skis (skis, U): tuck +15%, wider tuck turns · Carving Skis (skis, C): turn 30% faster, tuck turns 50% faster · Rocket Boots (boots, R): near misses fire a 1 s burst · Carbon Poles (poles, C): accelerate twice as fast · Aero Helmet (U): tuck +8% · Downhill Suit (R): every 4 s of unbroken tuck fires a 1 s burst |
+| Jump | Twin Tips (skis, U): tricks score double · Spring Boots (boots, C): hops as big as ramp jumps · Ice Picks (poles, C): turn 3× faster in the air · Hang Time (U): airtime +40% · Air Bag (C): a botched landing is safe · Ramp Rat (C): ramps pay 1 Token and a burst · Showboat (R): clean trick landings stun the yeti 0.5 s · Matchbook (U): jumped dead trees burn and stun the yeti 1 s · Mushroom Forager (C): jumped stumps pay 1 Token and a burst |
+| Crash | Snowshoes (boots, C): moguls don't slow you, hike 3× faster · Good Boy (C): dogs are a boost, not a crash · Dog Whistle (U): dog near misses score triple plus a burst · Bubble Wrap (C): crashes half as long · Rubber Chicken (U): first crash per slope bounces · Stunt Double (R): rocks and stumps always bounce · Helmet Cam (C): crashes keep your combo · Insurance Policy (U): every crash pays 1 Token |
+| Risk / economy | Yeti Musk (U): yeti waits 3 s longer, runs 5% faster · Yeti Bait (R): Close Call pays ×3 · Piggy Bank (C): +2 Tokens per finish · Coupon Book (U): Lodge −25% · Lucky Charm (U): 4 reward choices · Fanny Pack (C): +1 Snack slot · Lunchbox (U): a free Snack at every Lodge |
+
+Stagger from all sources (Showboat, Matchbook, Frozen Fish) shares the 3 s per-slope cap. Twin Tips, Ice Picks and Mushroom Forager differ from the first-pass ideas (backwards landings, instant air turns, collecting mushrooms) so they need no extra inputs. Lift Pass and Whiteout Goggles wait for chairlifts and Conditions.
+
+Simulator check (`npm run sim`, clean bot, which never jumps): a tuck build (Racing Skis, Carbon Poles, Aero Helmet, Downhill Suit) clears slopes about 18% faster; a crash build (Bubble Wrap, Rubber Chicken, Stunt Double, Helmet Cam, Insurance) turns almost every bot loss into a clear. The jump build needs human playtests.
 
 **Synergy test (P2):** every Gear must combine with at least two others into a noticeable build. "+X% stat" items are only allowed in a slot item that also changes how you ski.
 
@@ -98,7 +94,7 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 | Quantity | Value |
 |---|---|
 | Tokens per average slope | ~8–12 |
-| Lodge prices | Common Gear 8, Uncommon 14, Rare 22, Snack 4, Reroll 3 (+1 each) |
+| Lodge prices | Common Gear 6, Uncommon 10, Rare 16, Snack 3, Reroll 2 (+1 each); selling pays half. Lowered from 8/14/22/4/3 in M2: without tricks a skier earns 3–6 Tokens per descent |
 | Run length | 15 descents (12 slopes + 3 Summits) at ~1 min, plus 6 stops and menus ≈ 20–30 min |
 
 ## Player Experience
@@ -123,3 +119,4 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 | v1.0 | 2026-10-17 | First draft |
 | v1.1 | 2026-10-17 | 6-row maps, Warming Hut, Altitude, Tokens ÷ 200 with worked example, combo scope, Retiree and Rental Skis changed to keep tuck speed fixed |
 | v1.2 | 2026-10-18 | M1: Rocket Boots, Ice Picks and Mushroom Forager reworded to what was built; the M1 Gear pool listed |
+| v1.3 | 2026-10-18 | M2: the 30 Gear, linear stage pattern, lower Lodge prices, save |

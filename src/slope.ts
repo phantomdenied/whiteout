@@ -45,6 +45,8 @@ export const SLOPE = {
   dogWander: 2.5,
 };
 
+export type BossKind = 'big' | 'twins' | 'old';
+
 export interface SlopeParams {
   /** Meters from the start to the finish gate (Infinity for an endless slope). */
   length: number;
@@ -54,6 +56,8 @@ export interface SlopeParams {
   mountain: number;
   yetiSpeed: number;
   grace: number;
+  /** A Summit: the boss replaces the yeti. */
+  boss?: BossKind;
 }
 
 export interface Slope {
@@ -110,7 +114,7 @@ export function buildSlope(seed: number, params: SlopeParams, tuck: number): Slo
     const { obstacles, chunks } = layout(rng, params);
     if (!Number.isFinite(params.length)) return { obstacles, line: null, chunks, attempts: attempt + 1, fallback: false };
     const line = findLine(obstacles, params.length);
-    if (line && chaseGap(line, tuck, params.yetiSpeed, params.grace) >= LINE.minGap) {
+    if (line && chaseGap(line, tuck, params.yetiSpeed, params.grace, params.boss ? BOSS_HOLD : undefined) >= LINE.minGap) {
       return { obstacles, line, chunks, attempts: attempt + 1, fallback: false };
     }
   }
@@ -295,11 +299,15 @@ export function findLine(obstacles: Obstacle[], length: number, from = 0): numbe
   return line;
 }
 
+/** Where a Summit boss waits at the start (mirrors CFG.yeti.bossHold in the engine). */
+export const BOSS_HOLD = -6;
+
 /**
  * Closest the yeti gets to a skier holding `line` in a clean tuck (accelerating from a standstill).
  * One-dimensional and slightly generous to the yeti: it runs straight downhill at full speed.
+ * A normal yeti appears 40 m behind the skier when the grace ends; a boss starts from `holdAt`.
  */
-export function chaseGap(line: number[], tuck: number, yetiSpeed: number, grace: number): number {
+export function chaseGap(line: number[], tuck: number, yetiSpeed: number, grace: number, holdAt?: number): number {
   const dt = 0.05;
   let y = 0;
   let v = 0;
@@ -315,7 +323,7 @@ export function chaseGap(line: number[], tuck: number, yetiSpeed: number, grace:
     y += v * dt;
     t += dt;
     if (t >= grace) {
-      if (yetiY === -Infinity) yetiY = y - 40;
+      if (yetiY === -Infinity) yetiY = holdAt ?? y - 40;
       yetiY = Math.max(yetiY + yetiSpeed * dt, y - 60);
       gap = Math.min(gap, y - yetiY);
     }

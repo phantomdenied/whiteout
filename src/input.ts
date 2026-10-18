@@ -28,6 +28,7 @@ export class Controls {
   private touch: Touch | null = null;
   private keys = new Set<string>();
   private jumpQueued = false;
+  private snackQueued: number | undefined;
 
   constructor(target: HTMLElement, private getAngle: () => number, private onKey: (key: string) => void) {
     target.addEventListener('pointerdown', (e) => this.down(e));
@@ -49,13 +50,21 @@ export class Controls {
     this.touch = null;
     this.keys.clear();
     this.jumpQueued = false;
+    this.snackQueued = undefined;
+  }
+
+  /** Use a Snack on the next tick (HUD button or number key). */
+  queueSnack(index: number) {
+    this.snackQueued = index;
   }
 
   /** Input for one tick. Consumes a queued jump. */
   read(): Input {
     const k = this.keys;
     const jump = this.jumpQueued;
+    const snack = this.snackQueued;
     this.jumpQueued = false;
+    this.snackQueued = undefined;
     const t = this.touch;
     if (t) {
       const dx = t.x - t.x0;
@@ -66,6 +75,7 @@ export class Controls {
         tuck: dy > HOLD_PX,
         brake: dy < -HOLD_PX,
         jump,
+        snack,
       };
     }
     const left = k.has('arrowleft') || k.has('a');
@@ -75,6 +85,7 @@ export class Controls {
       tuck: k.has('arrowdown') || k.has('s'),
       brake: k.has('arrowup') || k.has('w'),
       jump,
+      snack,
     };
   }
 

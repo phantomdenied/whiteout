@@ -1,6 +1,6 @@
 # Yetis — Feature Document
 
-> **Version:** v1.1 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
+> **Version:** v1.2 · **Status:** Draft · **Last updated:** 2026-10-17 · Master: [GDD](../GDD.md)
 
 ## Design Goal
 > The yeti is the clock (P1). It turns "ski down a hill" into "get down the hill *now*". It must be scary but fair: always escapable by clean skiing, and never invisible.
@@ -41,11 +41,11 @@ A homage to the original's four yetis, one past each edge of the map:
 ### Summit bosses (one per mountain)
 | Mountain | Boss | Twist |
 |---|---|---|
-| 1 — Bunny Hill Range | **Big Yeti** | 17 m/s, faster than the normal yeti; jumps over obstacles in its way. A pure speed test. |
-| 2 — Black Pine | **The Twins** | Two yetis that flank from the left and right (Edge Yetis that close in). A steering test. |
-| 3 — The Spine | **The Old One** | An avalanche (capped at 15 m/s) and a yeti (17 m/s) together: the wall closes slowly and the yeti breaks through it. The finale. |
+| 1 — Bunny Hill Range | **Big Yeti** | 16 m/s (the mountain's yeti is 14), drawn half again as big; runs straight through obstacles. A pure speed test. |
+| 2 — Black Pine | **The Twins** | Two yetis at 15.5 m/s, starting 9 m to either side and quick across the slope (12 m/s). A steering test. |
+| 3 — The Spine | **The Old One** | An avalanche (10 → 15 m/s over 30 s, never more than 84 m back; it buries you if it reaches you) carrying a yeti (16.5 m/s) that breaks out of it. The finale. |
 
-Summits are 1,200 m long. The boss is visible from the start, 1.5 screens back, and holds still for the 3 s minimum grace.
+Summits are 1,200 m long, one difficulty step easier than the mountain's last slope (the boss is the challenge). The boss waits 6 m behind the start line, visible (the camera looks back while it waits), and holds still for the 3 s minimum grace. The validator models that start. With the clean bot (`npm run sim`), all three bosses are cleared 92–100% of the time, and a skier who never tucks never beats one.
 
 ### Edge cases
 - **Yeti reaches you mid-air:** you're caught on landing unless you land beyond its reach. This rewards big jumps.
@@ -65,8 +65,8 @@ Summits are 1,200 m long. The boss is visible from the start, 1.5 screens back, 
 | Level | Content | Status |
 |---|---|---|
 | Core | Yeti spawn, chase with direction caps, leash, catch, meter | M0 prototype |
-| Expected | Edge Yetis, Top Yeti, stagger hooks, audio cues, eating animation | Not started |
-| Desired | Three Summit bosses, eats-skiers interaction | Not started |
+| Expected | Edge Yetis, Top Yeti, stagger hooks, audio cues, eating animation | Stagger hooks and eating animation done; tree lines replace Edge Yetis for now; no audio yet |
+| Desired | Three Summit bosses, eats-skiers interaction | Bosses: M2. Eats-skiers not started |
 | Aspirational | Yeti personalities (patterns), a yeti bestiary page | Not started |
 
 ## Change Log
@@ -74,3 +74,4 @@ Summits are 1,200 m long. The boss is visible from the start, 1.5 screens back, 
 |---|---|---|
 | v1.0 | 2026-10-17 | First draft |
 | v1.1 | 2026-10-17 | Pursuer cap (17.5 m/s), boss speeds, 3 s minimum grace incl. Summits |
+| v1.2 | 2026-10-18 | M2: bosses as built (speeds tuned by simulator), visible boss start, avalanche numbers |

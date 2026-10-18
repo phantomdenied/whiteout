@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { botInput } from '../src/bot';
 import { CHUNKS, CHUNK_COLS, CHUNK_ROWS } from '../src/chunks';
 import { CFG, newGame, step } from '../src/engine';
-import { TOTAL_SLOPES, slopeParams } from '../src/run';
+import { TOTAL_SLOPES, TOTAL_STAGES, paramsFor, slopeParams, stageKind } from '../src/run';
 import { KINDS, LINE, type Obstacle, type ObstacleKind, SLOPE, buildSlope, chaseGap, findLine } from '../src/slope';
 
 const CELL_KIND: Record<string, ObstacleKind> = { T: 'tree', D: 'deadtree', r: 'rock', s: 'stump', m: 'moguls', R: 'ramp', d: 'dog' };
@@ -58,14 +58,15 @@ describe('slope generation', () => {
     expect(chaseGap(line, CFG.tuck, p.yetiSpeed, p.grace)).toBeGreaterThanOrEqual(LINE.minGap);
   });
 
-  it('the clean-skier bot clears every slope of a run (M1 exit test)', () => {
-    for (let i = 0; i < TOTAL_SLOPES; i++) {
-      const g = newGame(2024 + i, { params: slopeParams(i) });
+  it('the clean-skier bot clears every descent of a run, Summits included', () => {
+    for (let i = 0; i < TOTAL_STAGES; i++) {
+      if (stageKind(i) === 'lodge') continue;
+      const g = newGame(2024 + i, { params: paramsFor(i) });
       while (!g.over && g.tick < 60 * 300) {
         step(g, botInput(g));
         g.events.length = 0;
       }
-      expect(g.result, `slope ${i + 1}`).toBe('cleared');
+      expect(g.result, `stage ${i + 1}`).toBe('cleared');
     }
   });
 
