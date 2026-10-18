@@ -8,7 +8,7 @@
 ## Core Mechanics
 
 ### Run shape
-**Built in M3:** the route map below, per mountain: six rows of 2–3 nodes plus the Summit. Slope rows hold Slopes and Black Diamonds (30% chance each node, at least one Slope per row); the first Stop row always has a Lodge, the second always a Warming Hut, and the rest are Huts, Lodges or Events. Each node links to the nodes roughly below it, so paths branch and rejoin. Every route is 4 descents and 2 stops per mountain, 15 descents in all. Runs save between nodes (Continue on the title screen).
+**Built in M3:** the route map below, per mountain: six rows of 2–3 nodes plus the Summit. Slope rows hold Slopes and Black Diamonds (30% chance each node, at least one Slope per row); the first Stop row always has a Lodge, the second always a Warming Hut, and the rest are Huts, Lodges or Events. Each node links to the nodes roughly below it, so paths branch and rejoin. Every route is 4 descents and 2 stops per mountain, 15 descents in all. Stop rows can also hold a **Slalom** bonus stage (⚑): a 450–600 m gate course (a gate every 17 m) with no yeti. It pays 1 Token per gate on top of its Style, +8 Tokens and a reward pick for a perfect run (every gate), and doesn't count toward the 15 descents or end the run. Runs save between nodes (Continue on the title screen).
 
 ```
 Skier pick ─▶ Mountain 1 map ─▶ … ─▶ Summit 1 ─▶ Mountain 2 map ─▶ … ─▶ Summit 2 ─▶ Mountain 3 ─▶ Summit 3 = WIN
@@ -138,3 +138,4 @@ Each skier is a starting kit with a boon and a bane, the same idea as Spindle's 
 | v1.3 | 2026-10-18 | M2: the 30 Gear, linear stage pattern, lower Lodge prices, save |
 | v1.4 | 2026-10-18 | M3: route map, Black Diamonds (+1.5 difficulty, cap 9), Warming Hut options, 8 Events, 6 Curses, 4 skiers |
 | v1.5 | 2026-10-18 | M4: profile and skier unlocks, Altitude numbers, Daily Seed, run summary |
+| v1.6 | 2026-10-18 | Slalom bonus stage; Avalanche descents pay 2× Tokens and a guaranteed rare (two on a Black Diamond) |

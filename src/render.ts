@@ -1,7 +1,7 @@
 // Canvas renderer. Placeholder art, all drawn from shapes (original, not SkiFree's sprites).
 // The camera keeps the skier about 30% from the top so most of the screen shows the slope ahead.
 import { CFG, type Game, type Obstacle, TRICKS, type Yeti, type YetiLook, airborne, yetiProximity } from './engine';
-import { SLOPE } from './slope';
+import { type Gate, SLOPE } from './slope';
 
 const C = {
   snow: '#f3f6f9',
@@ -23,6 +23,7 @@ const C = {
   rampFace: '#b9d3e6',
   rampTop: '#e8f1f8',
   boundary: '#f28c28',
+  gateBlue: '#2f6fd6',
   dog: '#b07a45',
   dogDark: '#6e4a28',
   jacket: '#d6452b',
@@ -41,6 +42,9 @@ const VIEW_HEIGHT_M = 44;
 const SKIER_SCREEN_Y = 0.3;
 /** While a boss waits behind you, the camera looks back so you can see it. */
 const BOSS_LOOK_Y = 0.62;
+/** With a leashed avalanche on your heels, sit lower so the wall stays in view (less look-ahead: that's the tension). */
+const AVALANCHE_LOOK_Y = 0.56;
+const AVALANCHE_ZOOM = 0.78;
 const ICE = { snow: '#e3eff7', speck: '#bcd6ea' };
 const POWDER = { snow: '#fbfcfe', speck: '#e8eef4' };
 
@@ -64,6 +68,10 @@ export class Renderer {
   private dpr = 1;
   private h = 0;
   private ppm = 16;
+  /** Pixels per meter at normal zoom; `ppm` is this × `zoom`. */
+  private basePpm = 16;
+  /** Zooms out on Avalanche runs so the wall behind and the slope ahead both fit. */
+  private zoom = 1;
   private camX = 0;
   private camFrac = SKIER_SCREEN_Y;
   private shake = 0;
@@ -90,14 +98,28 @@ export class Renderer {
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.ppm = Math.min(this.w / VIEW_WIDTH_M, this.h / VIEW_HEIGHT_M) * 1.15;
+    this.basePpm = Math.min(this.w / VIEW_WIDTH_M, this.h / VIEW_HEIGHT_M) * 1.15;
+    this.ppm = this.basePpm * this.zoom;
   }
 
   reset(g: Game) {
     this.camX = g.skier.x;
-    this.camFrac = g.yetis.some((y) => y.state === 'holding') || g.wall?.armed ? BOSS_LOOK_Y : SKIER_SCREEN_Y;
+    this.camFrac = this.lookFor(g);
+    this.zoom = this.zoomFor(g);
+    this.ppm = this.basePpm * this.zoom;
     this.trail = [];
     this.shake = 0;
+  }
+
+  /** Where the skier sits on screen (fraction from the top): lower when something behind needs watching. */
+  private lookFor(g: Game): number {
+    if (g.yetis.some((y) => y.state === 'holding')) return BOSS_LOOK_Y;
+    if (g.wall?.leash && g.wall.armed) return AVALANCHE_LOOK_Y;
+    return SKIER_SCREEN_Y;
+  }
+
+  private zoomFor(g: Game): number {
+    return g.wall?.leash ? AVALANCHE_ZOOM : 1;
   }
 
   bump(amount: number) {
@@ -106,14 +128,15 @@ export class Renderer {
 
   draw(g: Game, frameDt: number) {
     this.resize();
+    this.zoom += (this.zoomFor(g) - this.zoom) * Math.min(1, frameDt * 1.5);
+    this.ppm = this.basePpm * this.zoom;
     const { ctx, w, h, ppm } = this;
     const s = g.skier;
     this.camX += (s.x - this.camX) * Math.min(1, frameDt * 6);
     this.shake = Math.max(0, this.shake - frameDt * 30);
     const sx = (Math.random() - 0.5) * this.shake;
     const sy = (Math.random() - 0.5) * this.shake;
-    const lookBack = g.yetis.some((y) => y.state === 'holding');
-    this.camFrac += ((lookBack ? BOSS_LOOK_Y : SKIER_SCREEN_Y) - this.camFrac) * Math.min(1, frameDt * 1.5);
+    this.camFrac += (this.lookFor(g) - this.camFrac) * Math.min(1, frameDt * 1.5);
     const camY = s.y - (h * this.camFrac) / ppm;
     const toX = (x: number) => w / 2 + (x - this.camX) * ppm + sx;
     const toY = (y: number) => (y - camY) * ppm + sy;
@@ -208,6 +231,10 @@ export class Renderer {
       if (px < -60 || px > w + 60) continue;
       list.push({ y: o.y, draw: () => this.obstacle(o, px, toY(o.y), g.time) });
     }
+    g.gates.forEach((gate, i) => {
+      if (gate.y < top || gate.y > bottom) return;
+      list.push({ y: gate.y, draw: () => this.gate(gate, i, toX, toY(gate.y)) });
+    });
     list.push({ y: s.y, draw: () => this.skier(g, toX(s.x), toY(s.y)) });
     if (s.boostT > 0 && s.state === 'ski') {
       // Speed lines trailing uphill of the skier.
@@ -520,6 +547,28 @@ export class Renderer {
     ctx.restore();
     this.body(u, s.tuck, s.angle);
     ctx.restore();
+  }
+
+  /** A slalom gate: two poles with flags, red and blue alternating; green once made, grey once missed. */
+  private gate(gate: Gate, i: number, toX: (x: number) => number, py: number) {
+    const { ctx, ppm: u } = this;
+    const color = gate.passed ? (gate.made ? '#3aa655' : '#9aa7b2') : i % 2 ? C.gateBlue : C.jacket;
+    for (const side of [-1, 1]) {
+      const px = toX(gate.x + (side * gate.w) / 2);
+      ctx.fillStyle = C.shadow;
+      ctx.beginPath();
+      ctx.ellipse(px, py, u * 0.2, u * 0.08, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = C.ski;
+      ctx.fillRect(px - u * 0.04, py - u * 1.7, u * 0.08, u * 1.7);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(px, py - u * 1.7);
+      ctx.lineTo(px - side * u * 0.7, py - u * 1.45);
+      ctx.lineTo(px, py - u * 1.2);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
   private skiPair(u: number, scale: number, scattered: boolean) {

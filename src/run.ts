@@ -28,7 +28,7 @@ export const MOUNTAINS: { name: string; blurb: string; boss: BossKind }[] = [
   { name: 'The Spine', blurb: 'The last bus leaves from the bottom.', boss: 'old' },
 ];
 
-export type NodeKind = 'slope' | 'diamond' | 'lodge' | 'hut' | 'event' | 'summit';
+export type NodeKind = 'slope' | 'diamond' | 'lodge' | 'hut' | 'event' | 'slalom' | 'summit';
 export interface MapNode {
   kind: NodeKind;
   /** Indices of the nodes in the next row this one leads to. */
@@ -56,6 +56,14 @@ const SHOP_GEAR = 3;
 const SHOP_SNACKS = 2;
 /** Black Diamond: harder, longer, always a Condition; better rewards. */
 const DIAMOND = { difficulty: 1.5, maxDifficulty: 9, length: 100, tokenMult: 1.5 };
+/** Avalanche descents: the wall is the danger, so the slope is a more open race (fewer obstacles); better pay. */
+export const AVALANCHE = { difficulty: -1.5, minDifficulty: 2, tokenMult: 2 };
+const withCondition = (p: SlopeParams, condition: Condition | undefined): SlopeParams =>
+  !condition ? p
+    : condition === 'avalanche' ? { ...p, condition, difficulty: Math.max(AVALANCHE.minDifficulty, p.difficulty + AVALANCHE.difficulty) }
+      : { ...p, condition };
+/** Slalom: gates on some plain slopes, and the bonus stage (no pursuer; Tokens per gate, a reward pick for a perfect run). */
+export const SLALOM = { sectionChance: 0.35, tokensPerGate: 1, perfectBonus: 8 };
 /** Chance of a Condition on a normal slope, per mountain. */
 const CONDITION_CHANCE = [0, 0.3, 0.5];
 /**
@@ -77,6 +85,8 @@ export interface DescentResult {
   style: number;
   tokens: number;
   time: number;
+  /** Slalom gates made, if the descent had any. */
+  gates?: { made: number; total: number };
 }
 
 export interface Shop {
@@ -144,7 +154,7 @@ export function generateMap(seed: number, mountain: number): MountainMap {
     } else {
       // The first stop row always has a Lodge, the second always a Warming Hut.
       const fixed: NodeKind = r === 2 ? 'lodge' : 'hut';
-      const others: NodeKind[] = r === 2 ? ['hut', 'event', 'event'] : ['lodge', 'event', 'event'];
+      const others: NodeKind[] = r === 2 ? ['hut', 'event', 'event', 'slalom'] : ['lodge', 'event', 'event', 'slalom'];
       kinds = [fixed, ...Array.from({ length: n - 1 }, () => pick(others))];
       for (let i = kinds.length - 1; i > 0; i--) {
         const j = Math.floor(rng() * (i + 1));
@@ -226,7 +236,8 @@ export function startAt(seed: number, skier: SkierId, mountain: number, row = 0,
 
 export const runMods = (run: RunState) => modsFor(run.gear, run.curses, run.skier);
 export const snackSlots = (run: RunState) => runMods(run).snackSlots;
-export const descentsDone = (run: RunState) => run.results.filter((r) => r.cleared).length;
+/** Descents cleared (the Slalom bonus stage doesn't count toward the 15). */
+export const descentsDone = (run: RunState) => run.results.filter((r) => r.cleared && r.kind !== 'slalom').length;
 export const nodeSeed = (run: RunState) => mix(run.seed, 1000 + run.mountain * 100 + run.row * 10 + (run.path[run.row] ?? 0));
 
 /** Which slope of its mountain (0-based) a descent row is. */
@@ -248,7 +259,7 @@ export function slopeParams(slope: number): SlopeParams {
 /** A Black Diamond on that slope: harder, longer, and always under a Condition. */
 export function diamondParams(slope: number, condition: Condition): SlopeParams {
   const p = slopeParams(slope);
-  return { ...p, difficulty: Math.min(DIAMOND.maxDifficulty, p.difficulty + DIAMOND.difficulty), length: p.length + DIAMOND.length, condition };
+  return withCondition({ ...p, difficulty: Math.min(DIAMOND.maxDifficulty, p.difficulty + DIAMOND.difficulty), length: p.length + DIAMOND.length }, condition);
 }
 
 /** A mountain's Summit: 1,200 m, the boss instead of the yeti, the 3 s minimum grace. */
@@ -266,6 +277,11 @@ export function summitParams(mountain: number): SlopeParams {
   };
 }
 
+/** The Slalom bonus stage: a gate course with no pursuer, a little longer on each mountain. */
+export function slalomParams(mountain: number): SlopeParams {
+  return { length: 450 + mountain * 75, difficulty: 2 + mountain * 0.5, mountain, yetiSpeed: 0, grace: 99, gates: 'course' };
+}
+
 /** The Condition (if any) on the node at (mountain, row, col). Avalanches only from the second mountain on. */
 export function conditionAt(seed: number, mountain: number, row: number, col: number, kind: NodeKind, altitude = 0): Condition | undefined {
   const rng = createRng(mix(seed, 3000 + mountain * 100 + row * 10 + col));
@@ -277,12 +293,17 @@ export function conditionAt(seed: number, mountain: number, row: number, col: nu
 /** Parameters for any descent node (Slope, Black Diamond or Summit) at (mountain, row, col), at an Altitude. */
 export function nodeParams(seed: number, map: MountainMap, mountain: number, row: number, col: number, altitude = 0): SlopeParams {
   const kind = map.rows[row][col].kind;
+  if (kind === 'slalom') return slalomParams(mountain);
   let p: SlopeParams;
   if (kind === 'summit') p = summitParams(mountain);
   else {
     const slope = mountain * SLOPES_PER_MOUNTAIN + slopeInMountain(row);
     const condition = conditionAt(seed, mountain, row, col, kind, altitude);
-    p = kind === 'diamond' ? diamondParams(slope, condition!) : condition ? { ...slopeParams(slope), condition } : slopeParams(slope);
+    p = kind === 'diamond' ? diamondParams(slope, condition!) : withCondition(slopeParams(slope), condition);
+    // Some plain slopes have a slalom section mid-way.
+    if (kind === 'slope' && condition !== 'avalanche' && createRng(mix(seed, 3500 + mountain * 100 + row * 10 + col))() < SLALOM.sectionChance) {
+      p = { ...p, gates: 'section' };
+    }
   }
   if (!altitude) return p;
   return {
@@ -335,11 +356,19 @@ function advance(run: RunState): RunState {
 export function finishDescent(run: RunState, result: Omit<DescentResult, 'mountain' | 'row' | 'kind' | 'condition'>, snacks: SnackId[] = run.snacks): RunState {
   const node = currentNode(run);
   const diamond = node?.kind === 'diamond';
-  const earned = result.cleared ? Math.round(result.tokens * (diamond ? DIAMOND.tokenMult : 1)) : 0;
-  const full: DescentResult = { ...result, tokens: earned, mountain: run.mountain, row: run.row, kind: node?.kind ?? 'slope' };
   const condition = paramsFor(run).condition;
+  const mult = (diamond ? DIAMOND.tokenMult : 1) * (condition === 'avalanche' ? AVALANCHE.tokenMult : 1);
+  let earned = result.cleared ? Math.round(result.tokens * mult) : 0;
+  const slalom = node?.kind === 'slalom';
+  const perfect = slalom && !!result.gates && result.gates.made === result.gates.total;
+  if (slalom && result.gates) earned += result.gates.made * SLALOM.tokensPerGate + (perfect ? SLALOM.perfectBonus : 0);
+  const full: DescentResult = { ...result, tokens: earned, mountain: run.mountain, row: run.row, kind: node?.kind ?? 'slope' };
   if (condition) full.condition = condition;
   const base = { ...run, results: [...run.results, full], tokens: run.tokens + earned, snacks: [...snacks] };
+  // The Slalom has no pursuer, so it can't be lost; a perfect run earns a reward pick.
+  if (slalom && !perfect) {
+    return advance({ ...base, note: `Slalom: ${result.gates?.made ?? 0} of ${result.gates?.total ?? 0} gates, +${earned} Tokens.` });
+  }
   if (!result.cleared) return { ...base, status: 'lost', offer: [] };
   if (run.row === SUMMIT_ROW && run.mountain === MOUNTAINS.length - 1) return { ...base, status: 'won', offer: [] };
   const next = { ...base, status: 'reward' as const };
@@ -387,10 +416,15 @@ export function rollOffer(run: RunState): OfferItem[] {
   const rng = createRng(mix(run.seed, 5000 + run.mountain * 100 + run.row * 10 + (run.path[run.row] ?? 0)));
   const size = runMods(run).offerSize;
   const items: OfferItem[] = rollGear(rng, run, size).map((id) => ({ kind: 'gear', id }));
-  if (currentNode(run)?.kind === 'diamond') {
-    const rare = rollGearAtLeast(rng, run, 'rare');
-    if (rare && items.length) items[0] = { kind: 'gear', id: rare };
-    for (let i = 1; i < items.length; i++) if (items[i].kind === 'gear' && (items[i] as { id: string }).id === rare) items.splice(i, 1);
+  // Black Diamonds and Avalanches each guarantee a rare (an Avalanche Black Diamond, two).
+  const rares = (currentNode(run)?.kind === 'diamond' ? 1 : 0) + (paramsFor(run).condition === 'avalanche' ? 1 : 0);
+  for (let k = 0; k < rares && k < items.length; k++) {
+    const owned = { ...run, gear: [...run.gear, ...items.slice(0, k).map((x) => (x as { id: string }).id)] };
+    const rare = rollGearAtLeast(rng, owned, 'rare');
+    if (!rare) break;
+    const dup = items.findIndex((x, i) => i > k && x.kind === 'gear' && x.id === rare);
+    if (dup >= 0) items.splice(dup, 1);
+    items[k] = { kind: 'gear', id: rare };
   }
   const r = rng();
   if (items.length > 1 && r < 0.3) {

@@ -34,6 +34,7 @@ import {
   type OfferItem,
   type RunState,
   SLOPES_PER_MOUNTAIN,
+  SLALOM,
   SUMMIT_ROW,
   TOTAL_DESCENTS,
   TOTAL_SLOPES,
@@ -158,7 +159,7 @@ function attractGame(): Game {
     ? summitParams(n % MOUNTAINS.length)
     : n % 5 === 2
       ? diamondParams(slope, CONDITION_IDS[n % CONDITION_IDS.length])
-      : slopeParams(slope);
+      : n % 5 === 1 ? { ...slopeParams(slope), gates: 'section' as const } : slopeParams(slope);
   return newGame(randomSeed(), { params: { ...params, grace: Math.min(params.grace, 4) } });
 }
 
@@ -239,7 +240,10 @@ function toIntro() {
 function descentOver() {
   run = finishDescent(
     run,
-    { cleared: game.result === 'cleared', distance: distance(game), style: style(game), tokens: tokens(game), time: game.time },
+    {
+      cleared: game.result === 'cleared', distance: distance(game), style: style(game), tokens: tokens(game), time: game.time,
+      ...(game.gates.length ? { gates: { made: game.gatesMade, total: game.gates.length } } : {}),
+    },
     game.snacks,
   );
   const reached = descentsDone(run);
@@ -484,7 +488,7 @@ function altitudePicker(): string {
 }
 
 const NODE_LABEL: Record<MapNode['kind'], string> = {
-  slope: 'Slope', diamond: 'Black Diamond', lodge: 'Lodge', hut: 'Warming Hut', event: 'Event', summit: 'Summit',
+  slope: 'Slope', diamond: 'Black Diamond', lodge: 'Lodge', hut: 'Warming Hut', event: 'Event', slalom: 'Slalom', summit: 'Summit',
 };
 
 function nodeHtml(node: MapNode, r: number, c: number, n: number, state: 'open' | 'taken' | 'past' | 'locked'): string {
@@ -494,7 +498,10 @@ function nodeHtml(node: MapNode, r: number, c: number, n: number, state: 'open' 
   if (node.kind === 'slope' || node.kind === 'diamond') {
     const p = nodeParams(run.seed, run.map, run.mountain, r, c, run.altitude);
     icon = node.kind === 'diamond' ? '<span class="trail double" data-rating="black"></span>' : `<span class="trail" data-rating="${rating(p.difficulty)}"></span>`;
-    sub = p.condition ? CONDITIONS[p.condition].name : `${p.length} m`;
+    sub = p.condition ? CONDITIONS[p.condition].name : p.gates ? 'Gates' : `${p.length} m`;
+  } else if (node.kind === 'slalom') {
+    icon = '<span class="node-icon">⚑</span>';
+    sub = 'Bonus';
   } else if (node.kind === 'summit') {
     icon = '<span class="node-icon">▲</span>';
     sub = BOSSES[MOUNTAINS[run.mountain].boss].name;
@@ -548,7 +555,20 @@ function showIntro() {
   const m = run.mountain;
   const cond = p.condition ? CONDITIONS[p.condition] : null;
   const condHtml = cond ? `<p class="condition"><b>${esc(cond.name)}.</b> ${esc(cond.text)}</p>` : '';
-  if (p.boss) {
+  if (p.gates === 'course') {
+    card.innerHTML = `
+      <span class="eyebrow">${runTag()}Mountain ${m + 1} · Bonus stage</span>
+      <h2>Slalom</h2>
+      <p>No yeti. Ski between the flags: every gate scores Style and builds your combo, and pays ${SLALOM.tokensPerGate} Token at the end. Make them all for +${SLALOM.perfectBonus} Tokens and a reward pick.</p>
+      <div class="results">
+        <div><b>${game.gates.length}</b><span>gates</span></div>
+        <div><b>${p.length}</b><span>meters</span></div>
+        <div><b>+${SLALOM.perfectBonus}</b><span>if perfect</span></div>
+      </div>
+      ${kit()}
+      <div class="actions"><button class="btn" id="drop">Drop in</button></div>
+      <span class="meta">◆ ${run.tokens} Tokens · Seed ${run.seed}</span>`;
+  } else if (p.boss) {
     const boss = BOSSES[p.boss];
     card.innerHTML = `
       <span class="eyebrow">${runTag()}Mountain ${m + 1} · Summit</span>
@@ -571,6 +591,7 @@ function showIntro() {
       <h2>${diamond ? 'Black Diamond' : `Slope ${k + 1} of ${SLOPES_PER_MOUNTAIN}`}</h2>
       ${diamond ? '<p>Harder and longer, with better rewards: a guaranteed rare and 1.5× Tokens.</p>' : ''}
       ${condHtml}
+      ${p.gates ? `<p class="condition"><b>Slalom gates.</b> ${game.gates.length} gates mid-slope mark the safe line. Each one you make scores Style and builds your combo.</p>` : ''}
       <div class="results">
         <div><b>${p.length}</b><span>meters</span></div>
         <div><b class="sign"><span class="trail${diamond ? ' double' : ''}" data-rating="${r}"></span></b><span>${diamond ? 'Double black' : RATING_NAME[r]}</span></div>
@@ -628,7 +649,7 @@ function showReward() {
   const node = currentNode(run);
   const summit = node?.kind === 'summit';
   card.innerHTML = `
-    <span class="eyebrow">${summit ? `${esc(BOSSES[MOUNTAINS[run.mountain].boss].name)} beaten` : `${node?.kind === 'diamond' ? 'Black Diamond' : 'Slope'} cleared · ${descentsDone(run)} of ${TOTAL_DESCENTS}`}</span>
+    <span class="eyebrow">${summit ? `${esc(BOSSES[MOUNTAINS[run.mountain].boss].name)} beaten` : node?.kind === 'slalom' ? 'Perfect slalom · every gate' : `${node?.kind === 'diamond' ? 'Black Diamond' : 'Slope'} cleared · ${descentsDone(run)} of ${TOTAL_DESCENTS}`}</span>
     <h2>Pick a reward</h2>
     <div class="results">
       <div><b>${res.style.toLocaleString()}</b><span>style</span></div>
@@ -711,7 +732,7 @@ function showEvent() {
   on('[data-choice]', (b) => follow(chooseEvent(run, Number(b.dataset.choice))));
 }
 
-const LOG_ICON: Record<LogEntry['kind'], string> = { slope: '▫', diamond: '◆', lodge: '⌂', hut: '♨', event: '?', summit: '▲' };
+const LOG_ICON: Record<LogEntry['kind'], string> = { slope: '▫', diamond: '◆', lodge: '⌂', hut: '♨', event: '?', slalom: '⚑', summit: '▲' };
 
 function routeHtml(): string {
   const rows = MOUNTAINS.map((mt, m) => {
@@ -837,12 +858,12 @@ const SNACK_TOAST: Record<SnackId, string> = { cocoa: 'Cocoa!', fish: 'Fish thro
 
 const EVENT_SOUND: Partial<Record<GameEvent['type'], SoundName>> = {
   crash: 'crash', bounce: 'bounce', nearMiss: 'nearMiss', jump: 'jump', ramp: 'jump', trick: 'trick', safeLanding: 'land',
-  burn: 'burn', forage: 'coin', goodBoy: 'bounce', token: 'coin', snack: 'snack', yetiSpawn: 'roar', closeCall: 'coin',
+  burn: 'burn', forage: 'coin', gate: 'gate', goodBoy: 'bounce', token: 'coin', snack: 'snack', yetiSpawn: 'roar', closeCall: 'coin',
   eaten: 'eaten', buried: 'buried', finish: 'finish', mushroom: 'secret',
 };
 
 function handle(e: GameEvent) {
-  const cue = e.type === 'land' ? (e.tricks ? 'trickLand' : 'land') : EVENT_SOUND[e.type];
+  const cue = e.type === 'land' ? (e.tricks ? 'trickLand' : 'land') : e.type === 'gate' && !e.made ? 'click' : EVENT_SOUND[e.type];
   if (cue && !(e.type === 'yetiSpawn' && game.params.condition === 'avalanche')) sound.play(cue);
   else if (e.type === 'yetiSpawn') sound.play('buried');
   switch (e.type) {
@@ -867,6 +888,10 @@ function handle(e: GameEvent) {
       break;
     case 'burn':
       toast('Torched it');
+      break;
+    case 'gate':
+      if (e.made) toast(`Gate ${game.gatesMade}/${game.gates.length} +${Math.round(e.style)}`);
+      else toast('Missed gate', true);
       break;
     case 'goodBoy':
       dogsHit++;
@@ -946,7 +971,7 @@ function updateHud() {
   setText(hud.dist, distance(game).toLocaleString());
   setText(hud.length, `/${game.params.length} m`);
   setText(hud.speed, String(Math.round(game.skier.speed)));
-  setText(hud.slope, run.row === SUMMIT_ROW ? `${run.mountain + 1}-S` : `${run.mountain + 1}-${slopeInMountain(run.row) + 1}`);
+  setText(hud.slope, run.row === SUMMIT_ROW ? `${run.mountain + 1}-S` : game.params.gates === 'course' ? '⚑' : `${run.mountain + 1}-${slopeInMountain(run.row) + 1}`);
   setText(hud.style, style(game).toLocaleString());
   const mult = multiplier(game);
   setText(hud.mult, mult > 1 ? `×${mult % 1 ? mult.toFixed(1) : mult}` : '');
@@ -959,6 +984,11 @@ function updateHud() {
   setStyle(meterFill, 'width', `${pct}%`);
   if (meterFill.classList.contains('close') !== p > 0.6) meterFill.classList.toggle('close', p > 0.6);
   if (meter.getAttribute('aria-valuenow') !== String(pct)) meter.setAttribute('aria-valuenow', String(pct));
+  if (game.params.gates === 'course') {
+    setText(meterLabel, `Gates ${game.gatesMade}/${game.gates.length}`);
+    updateSnackBar();
+    return;
+  }
   const waiting = game.yetis.every((y) => y.state === 'waiting' || y.state === 'holding') && !game.wall?.armed;
   const name = game.params.boss ? BOSSES[game.params.boss].name : game.params.condition === 'avalanche' ? 'avalanche' : 'yeti';
   setText(meterLabel, waiting

@@ -58,14 +58,17 @@ export const CONDITIONS: Record<Condition, {
   yetiMult: number;
   crashMult: number;
   turnMult: number;
-  /** Avalanche: a wall replaces the yeti. Starts at `start` m/s, reaches `max` over `ramp` s. */
-  wall?: { start: number; max: number; ramp: number };
+  /**
+   * Avalanche: a wall replaces the yeti. Starts at `start` m/s, reaches `max` over `ramp` s, and (with `leash`)
+   * is never more than that many meters behind you once it arrives.
+   */
+  wall?: { start: number; max: number; ramp: number; leash?: number };
 }> = {
   powder: { name: 'Powder', text: 'Deep snow: you and the yeti are 20% slower, and crashes are softer.', speedMult: 0.8, yetiMult: 0.8, crashMult: 0.7, turnMult: 1 },
   ice: { name: 'Ice', text: 'Hard ice: every turn is 25% slower.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 0.75 },
   night: { name: 'Night', text: 'You can only see what your headlamp lights up.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1 },
   fog: { name: 'Fog', text: 'Obstacles appear late out of the fog. Watch the yeti meter.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1 },
-  avalanche: { name: 'Avalanche', text: 'No yeti. An avalanche instead: it never stops speeding up, and fish won\'t help.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1, wall: { start: 10, max: 16, ramp: 30 } },
+  avalanche: { name: 'Avalanche', text: 'No yeti. An avalanche instead, right on your heels the whole way: one crash and you\'re buried. Pays double Tokens and a rare.', speedMult: 1, yetiMult: 1, crashMult: 1, turnMult: 1, wall: { start: 15.5, max: 16, ramp: 10, leash: 18 } },
 };
 export const CONDITION_IDS = Object.keys(CONDITIONS) as Condition[];
 
@@ -81,6 +84,8 @@ export interface SlopeParams {
   /** A Summit: the boss replaces the yeti. */
   boss?: BossKind;
   condition?: Condition;
+  /** Slalom gates along the clean line: a section mid-slope, or a whole course (the Slalom bonus stage, no pursuer). */
+  gates?: 'section' | 'course';
   /** Altitude: every pursuer on this slope runs this much faster (still under the cap). */
   yetiMult?: number;
 }
@@ -124,6 +129,8 @@ export const LINE = {
   maxShift: 1,
   /** The yeti must never get closer than this to a skier holding the line in a tuck. */
   minGap: 12,
+  /** A leashed avalanche starts this close anyway; it just must never gain on a skier holding the line. */
+  minGapLeashed: 3,
 };
 
 export function mix(seed: number, n: number): number {
@@ -144,7 +151,11 @@ export function buildSlope(seed: number, params: SlopeParams, tuck: number): Slo
     // is modeled as a pursuer already at its top speed (generous to the avalanche).
     const c = params.condition ? CONDITIONS[params.condition] : null;
     const chaser = c?.wall ? c.wall.max : Math.min(17.5, params.yetiSpeed * (c?.yetiMult ?? 1) * (params.yetiMult ?? 1));
-    if (line && chaseGap(line, tuck * (c?.speedMult ?? 1), chaser, params.grace, params.boss ? BOSS_HOLD : undefined) >= LINE.minGap) {
+    const leash = c?.wall?.leash;
+    const ok = params.gates === 'course'
+      ? line !== null
+      : line && chaseGap(line, tuck * (c?.speedMult ?? 1), chaser, params.grace, params.boss ? BOSS_HOLD : undefined, leash) >= (leash ? LINE.minGapLeashed : LINE.minGap);
+    if (line && ok) {
       return { obstacles, line, chunks, attempts: attempt + 1, fallback: false };
     }
   }
@@ -337,7 +348,8 @@ export const BOSS_HOLD = -6;
  * One-dimensional and slightly generous to the yeti: it runs straight downhill at full speed.
  * A normal yeti appears 40 m behind the skier when the grace ends; a boss starts from `holdAt`.
  */
-export function chaseGap(line: number[], tuck: number, yetiSpeed: number, grace: number, holdAt?: number): number {
+/** The closest the pursuer gets to a skier holding the line in a tuck (a leashed one starts `leash` behind). */
+export function chaseGap(line: number[], tuck: number, yetiSpeed: number, grace: number, holdAt?: number, leash?: number): number {
   const dt = 0.05;
   let y = 0;
   let v = 0;
@@ -353,13 +365,33 @@ export function chaseGap(line: number[], tuck: number, yetiSpeed: number, grace:
     y += v * dt;
     t += dt;
     if (t >= grace) {
-      if (yetiY === -Infinity) yetiY = holdAt ?? y - 40;
-      yetiY = Math.max(yetiY + yetiSpeed * dt, y - 60);
+      if (yetiY === -Infinity) yetiY = holdAt ?? y - (leash ?? 40);
+      yetiY = Math.max(yetiY + yetiSpeed * dt, y - (leash ?? 60));
       gap = Math.min(gap, y - yetiY);
     }
     if (t > 600) return 0;
   }
   return gap;
+}
+
+export interface Gate {
+  x: number;
+  y: number;
+  /** Gap between the poles, meters. */
+  w: number;
+  passed: boolean;
+  made: boolean;
+}
+
+export const GATES = { width: 3.6, sectionEvery: 22, courseEvery: 17 };
+
+/** Slalom gates centered on the clean line, so following the gates is a safe way down. */
+export function placeGates(line: number[] | null, kind: 'section' | 'course' | undefined, length: number): Gate[] {
+  if (!line || !kind || !Number.isFinite(length)) return [];
+  const [from, to, every] = kind === 'course' ? [40, length - 30, GATES.courseEvery] : [length * 0.35, length * 0.7, GATES.sectionEvery];
+  const gates: Gate[] = [];
+  for (let y = Math.round(from); y <= to; y += every) gates.push({ x: line[y], y, w: GATES.width, passed: false, made: false });
+  return gates;
 }
 
 function clamp(v: number, lo: number, hi: number) {

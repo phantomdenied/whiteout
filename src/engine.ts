@@ -2,7 +2,7 @@
 // step() advances one fixed 60 Hz tick and mutates the state in place (it runs 60 times a second);
 // determinism comes from the seed plus the input sequence, so a run replays exactly.
 import { BASE_MODS, type Mods, type SnackId } from './gear';
-import { BOSS_HOLD, type BossKind, CONDITIONS, KINDS, type Obstacle, type ObstacleKind, SLOPE, type SlopeParams, buildSlope } from './slope';
+import { BOSS_HOLD, type BossKind, CONDITIONS, type Gate, KINDS, type Obstacle, type ObstacleKind, SLOPE, type SlopeParams, buildSlope, placeGates } from './slope';
 
 export { type BossKind, CONDITIONS, type Condition, KINDS, type Obstacle, type ObstacleKind } from './slope';
 
@@ -42,6 +42,8 @@ export const CFG = {
   nearMissGap: 0.5,
   nearMissMinSpeed: 8,
   nearMissStyle: 25,
+  /** Style for each slalom gate made (combo-multiplied; each gate also builds the combo). */
+  gateStyle: 30,
   /** Combo multiplier = min(maxMult, 1 + chain × multPerChain). Only trick and near-miss Style is multiplied. */
   multPerChain: 0.5,
   maxMult: 4,
@@ -79,7 +81,7 @@ export const BOSSES: Record<BossKind, {
   twist: string;
   yetis: { dx: number; speed: number; cross: number; look: YetiLook }[];
   /** Avalanche wall: starts at `start` m/s and reaches `max` over `ramp` seconds. */
-  wall?: { start: number; max: number; ramp: number };
+  wall?: { start: number; max: number; ramp: number; leash?: number };
 }> = {
   big: {
     name: 'Big Yeti',
@@ -157,6 +159,8 @@ export interface Wall {
   start: number;
   max: number;
   ramp: number;
+  /** Once it reaches you, it is never more than this many meters behind (the Avalanche Condition). */
+  leash?: number;
 }
 
 export type GameEvent =
@@ -174,6 +178,7 @@ export type GameEvent =
   /** The old secret: skiing backwards uphill over a stump turns it into a mushroom. */
   | { type: 'mushroom' }
   | { type: 'goodBoy' }
+  | { type: 'gate'; made: boolean; style: number }
   | { type: 'token'; n: number; why: string }
   | { type: 'snack'; id: SnackId }
   | { type: 'yetiSpawn' }
@@ -199,6 +204,9 @@ export interface Game {
   obstacles: Obstacle[];
   /** The generator's clean line (x per meter), or null. */
   line: number[] | null;
+  /** Slalom gates, sorted by y. */
+  gates: Gate[];
+  gatesMade: number;
   /** Snacks carried into this slope; used ones are removed. */
   snacks: SnackId[];
   /** Trail Map: the clean line is drawn down to this y. */
@@ -274,7 +282,7 @@ export function newGame(seed: number, opts: GameOptions = {}): Game {
   const cond = params.condition ? CONDITIONS[params.condition] : null;
   const yetis = boss
     ? boss.yetis.map((b) => makeYeti(b.look, b.speed, b.cross, b.dx, 'holding'))
-    : cond?.wall ? [] : [makeYeti('yeti', params.yetiSpeed, CFG.yeti.cross, 0, 'waiting')];
+    : cond?.wall || params.gates === 'course' ? [] : [makeYeti('yeti', params.yetiSpeed, CFG.yeti.cross, 0, 'waiting')];
   const wall: Wall | null = boss?.wall
     ? { armed: true, y: CFG.yeti.wallHold, v: 0, ...boss.wall }
     : cond?.wall ? { armed: false, y: -Infinity, v: 0, ...cond.wall } : null;
@@ -294,6 +302,8 @@ export function newGame(seed: number, opts: GameOptions = {}): Game {
     wall,
     obstacles: slope.obstacles,
     line: slope.line,
+    gates: placeGates(slope.line, params.gates, params.length),
+    gatesMade: 0,
     snacks: [...(opts.snacks ?? [])],
     mapUntil: -Infinity,
     warm: false,
@@ -363,6 +373,7 @@ export function step(g: Game, input: Input): void {
   if (input.snack !== undefined) useSnack(g, input.snack);
   updateSkier(g, input);
   if (g.over) return;
+  updateGates(g);
   for (const y of g.yetis) {
     updateYeti(g, y);
     if (g.over || g.result) break;
@@ -687,6 +698,25 @@ function updateYeti(g: Game, y: Yeti) {
   y.y += vy * dt;
 }
 
+/** Slalom: crossing a gate's line between its poles (and on your feet) makes it. */
+function updateGates(g: Game) {
+  const s = g.skier;
+  for (const gate of g.gates) {
+    if (gate.y > s.y) break;
+    if (gate.passed) continue;
+    gate.passed = true;
+    gate.made = Math.abs(s.x - gate.x) <= gate.w / 2 && s.state === 'ski';
+    let pts = 0;
+    if (gate.made) {
+      pts = CFG.gateStyle * multiplier(g);
+      g.skillStyle += pts;
+      g.chain++;
+      g.gatesMade++;
+    }
+    g.events.push({ type: 'gate', made: gate.made, style: pts });
+  }
+}
+
 /** An avalanche (the Old One's, or the Avalanche Condition): a wall across the slope that speeds up after the grace period and buries you. */
 function updateWall(g: Game) {
   const w = g.wall;
@@ -696,11 +726,15 @@ function updateWall(g: Game) {
   if (t < 0) return;
   if (!w.armed) {
     w.armed = true;
-    w.y = s.y - CFG.yeti.spawnBehind;
+    w.y = s.y - (w.leash ? w.leash * 2.5 : CFG.yeti.spawnBehind);
     g.events.push({ type: 'yetiSpawn' });
   }
   w.v = Math.min(w.max, w.start + (t / w.ramp) * (w.max - w.start));
-  w.y = Math.max(w.y + w.v * CFG.dt, s.y - CFG.yeti.leash * 1.4);
+  if (w.leash) {
+    // It roars in until it's right behind you, then never drops back: any crash and it buries you.
+    const v = s.y - w.y > w.leash ? Math.max(w.v, s.speed + 6) : w.v;
+    w.y = Math.max(w.y + v * CFG.dt, s.y - w.leash);
+  } else w.y = Math.max(w.y + w.v * CFG.dt, s.y - CFG.yeti.leash * 1.4);
   if (w.y >= s.y && s.state !== 'eaten') {
     s.state = 'eaten';
     s.speed = 0;

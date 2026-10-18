@@ -15,6 +15,7 @@ Pillars served: **P3** (one thumb, readable), **P5** (fair luck), **P1** (speed 
 - **Tuck:** about +50% top speed, but the heading changes one step slower. Tucking is how you outrun the yeti.
 - **Slow down:** drag up to snowplow: −50% speed. A sideways heading stops you quickly.
 - **Jump:** double-tap. You're airborne for about 0.6 s (longer off ramps), passing over low obstacles (stumps, rocks, small dogs, moguls). Trees still hit you unless the jump is from a ramp.
+- **Slalom gates:** pairs of flags, 3.6 m apart, centered on the generator's clean line (so the gates show a safe way down). Passing between them on your feet scores 30 Style × the combo and adds 1 to the combo; missing one scores nothing. 35% of plain slopes (no Avalanche, not Black Diamonds) have a slalom section in their middle third, a gate every 22 m.
 - **Tricks:** swipe in the air, up to 3 per jump. A clean landing scores Style; landing mid-trick is a crash. Swipes only count in the air; on the ground a fast sideways drag is steering.
 
 | Swipe | Trick | Pose time | Style |
@@ -72,7 +73,7 @@ Mountain 1 slopes have none; 30% of mountain 2 slopes and 50% of mountain 3 slop
 | Ice | Every turn 25% slower; bluer snow. The validator demands a straighter line (at most ~27° instead of 45°). Ice patches are not built yet |
 | Night | Dark except a headlamp pool just ahead of the skier |
 | Fog | A white wall that thickens with distance downhill: obstacles appear late |
-| Avalanche | Replaces the yeti: a wall appears 40 m back when the grace ends, speeding up from 10 to 16 m/s over 30 s (16, not the 17.5 cap, so a clean tuck has room). Can't be staggered |
+| Avalanche | Replaces the yeti. When the grace ends the wall roars in and then stays at most **18 m behind you** the whole way (15.5 → 16 m/s; a clean tuck is 18). You can never build a lead, so one crash (≈23 m lost) buries you unless Gear softens it (Rubber Chicken, Stunt Double, Hand Warmer). Slopes are 1.5 difficulty easier (an open race), the camera zooms out to keep the wall in view, and the run pays 2× Tokens and a guaranteed rare. Can't be staggered. Simulated clean bot: 95% / 78% of mountain 2 / 3 avalanche slopes, 85% / 60% of avalanche Black Diamonds |
 
 Simulator (clean bot, hardest Black Diamond of each mountain): 100% under every Condition on mountains 1–2, 87–100% on mountain 3.
 
@@ -116,3 +117,4 @@ Pick by playtest: time to clear the first slope, crash rate, self-reported feel.
 | v1.2 | 2026-10-18 | M1: chunk grid format, seams, edge tree line, validator rules, bots; slope width 54 m |
 | v1.3 | 2026-10-18 | Playtest: mountain 1 too sparse. Added scatter, smaller warm-up dip, line clearance 0.75 m |
 | v1.4 | 2026-10-18 | M3: Conditions as built (Ice softened to −25% turning, Avalanche tops out at 16 m/s), where they appear |
+| v1.5 | 2026-10-18 | Avalanche leashed 18 m behind (one crash buries you), 2× Tokens and a rare; slalom gates |

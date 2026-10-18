@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CFG,
   type Game,
+  type GameEvent,
   type Input,
   NO_INPUT,
   type Obstacle,
@@ -15,7 +16,8 @@ import {
   yetiSpeedFor,
 } from '../src/engine';
 import { modsFor } from '../src/gear';
-import { SLOPE, buildSlope } from '../src/slope';
+import { CONDITIONS, SLOPE, buildSlope } from '../src/slope';
+import { botInput } from '../src/bot';
 
 let nextId = 1;
 const ob = (kind: ObstacleKind, x: number, y: number): Obstacle => ({
@@ -497,5 +499,39 @@ describe('tricks', () => {
     expect(air([1, 3]).find((e) => e.type === 'crash')).toMatchObject({ kind: 'botched' });
     // Spring Boots' long hop fits Spread Eagle + Backflip.
     expect(air([1, 3], 2).find((e) => e.type === 'land')).toMatchObject({ kinds: [1, 3] });
+  });
+});
+
+describe('slalom and the avalanche', () => {
+  it('gates sit on the clean line; making one scores Style and builds the combo, missing one scores nothing', () => {
+    const p = { length: 500, difficulty: 3, mountain: 0, yetiSpeed: 0, grace: 99, gates: 'course' as const };
+    const g = newGame(5, { params: p });
+    expect(g.yetis).toHaveLength(0);
+    expect(g.gates.length).toBeGreaterThan(20);
+    for (const gate of g.gates) expect(gate.x).toBeCloseTo(g.line![gate.y]);
+    const events: GameEvent[] = [];
+    while (!g.over) {
+      step(g, botInput(g));
+      events.push(...g.events);
+      g.events.length = 0;
+    }
+    expect(g.gatesMade).toBe(g.gates.length);
+    expect(events.filter((e) => e.type === 'gate' && e.made)).toHaveLength(g.gates.length);
+    // Skiing straight down the middle misses gates that aren't there.
+    const straight = newGame(5, { params: p });
+    run(straight, 40, tuck);
+    expect(straight.gatesMade).toBeLessThan(straight.gates.length);
+  });
+
+  it('the Avalanche stays right behind you, and one crash buries you', () => {
+    const p = { length: 2000, difficulty: 1, mountain: 1, yetiSpeed: 0, grace: 3, condition: 'avalanche' as const };
+    const g = newGame(1, { params: p, obstacles: [] });
+    run(g, 15, tuck);
+    expect(g.wall!.armed).toBe(true);
+    expect(g.skier.y - g.wall!.y).toBeLessThanOrEqual(CONDITIONS.avalanche.wall!.leash! + 0.01);
+    expect(g.over).toBe(false);
+    g.obstacles.push(ob('tree', g.skier.x, g.skier.y + 5));
+    run(g, 4, tuck);
+    expect(g.events.some((e) => e.type === 'buried')).toBe(true);
   });
 });

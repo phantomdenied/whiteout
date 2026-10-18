@@ -14,6 +14,8 @@ New in M4:
 - **Daily run:** the same mountain for everyone each day (UTC). Your best and attempts are kept.
 - **Sound:** synthesized effects, a ski hiss and yeti footsteps. Toggle on the title or pause screen, or press `M`.
 - **Run summary:** the end screen shows your route and copies a text summary (handy for feedback).
+- **Slalom:** gates on some slopes (they mark a safe line and build your combo), and a no-yeti Slalom bonus stage on the map that pays per gate.
+- **Avalanches** stay right on your heels: one crash and you're buried, but they pay double Tokens and a rare.
 - **Attract mode:** the start screen shows the bot skiing demo descents (it comes back after 45 s idle on the title).
 - **Install it:** on iPhone, Share → Add to Home Screen; on Android, the *Install app* button. Works offline once installed.
 

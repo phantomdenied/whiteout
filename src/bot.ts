@@ -39,5 +39,7 @@ export function botInput(g: Game, opts: BotOptions = {}): Input {
     if (l && g.time <= l.until) return { targetAngle: heading + l.drift, turn: 0, tuck: opts.tuck !== false, brake: false, jump: false };
   }
   const settled = Math.abs(err) < 0.35 && Math.abs(target - s.angle) < 0.2;
-  return { targetAngle: target, turn: 0, tuck: opts.tuck !== false && settled && Math.abs(target) < 0.5, brake: false, jump: false };
+  // With an avalanche right behind, stay tucked unless mid-way through a sharp correction (every second counts).
+  const pressed = g.wall?.armed === true && g.skier.y - g.wall.y < 25 && Math.abs(target - s.angle) < 0.3 && Math.abs(err) < 0.6;
+  return { targetAngle: target, turn: 0, tuck: opts.tuck !== false && (pressed || (settled && Math.abs(target) < 0.5)), brake: false, jump: false };
 }

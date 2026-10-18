@@ -4,7 +4,7 @@
 
 export type SoundName =
   | 'roar' | 'crash' | 'nearMiss' | 'jump' | 'trick' | 'land' | 'trickLand' | 'bounce' | 'coin' | 'snack'
-  | 'finish' | 'eaten' | 'buried' | 'burn' | 'click' | 'secret' | 'unlock';
+  | 'finish' | 'eaten' | 'buried' | 'burn' | 'click' | 'secret' | 'unlock' | 'gate';
 
 const MASTER = 0.6;
 
@@ -140,6 +140,9 @@ export class Sound {
         break;
       case 'secret':
         this.arpeggio([1047, 1319, 1568, 2093], 0.08, 'sine', 0.08);
+        break;
+      case 'gate':
+        this.tone(1175, 0.09, 'triangle', 0.07, 1400);
         break;
       case 'unlock':
         this.arpeggio([523, 784, 1047, 1568], 0.12, 'triangle', 0.12);
