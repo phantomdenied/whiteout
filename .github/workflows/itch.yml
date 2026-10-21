@@ -1,7 +1,7 @@
 name: Deploy to itch.io
 
 # Every push to main tests the game, packages the itch build and pushes it to
-# god-complex-studios.itch.io/whiteout with butler. Needs the repo secret BUTLER_API_KEY
+# god-complex-studios.itch.io/whiteout with butler. Needs the repo secret but (or BUTLER_API_KEY)
 # (an itch.io API key); without one the job skips the upload instead of failing.
 
 on:
