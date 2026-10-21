@@ -117,5 +117,82 @@
     "name": "yell",
     "dur": 1,
     "text": "brief startled male yelp of terror, one short 'WAAH', cartoonish video game death cry, dry"
+  },
+  {
+    "name": "say1",
+    "tts": {
+      "voice": "Will (bIHbv24MWmeRgasZH58o)",
+      "model": "eleven_multilingual_v2",
+      "stability": 0.35,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "text": "Let's shred!"
+  },
+  {
+    "name": "say2",
+    "tts": {
+      "voice": "Will (bIHbv24MWmeRgasZH58o)",
+      "model": "eleven_multilingual_v2",
+      "stability": 0.35,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "text": "Fresh pow, baby!"
+  },
+  {
+    "name": "say3",
+    "tts": {
+      "voice": "Will (bIHbv24MWmeRgasZH58o)",
+      "model": "eleven_multilingual_v2",
+      "stability": 0.35,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "text": "Send it!"
+  },
+  {
+    "name": "say4",
+    "tts": {
+      "voice": "Will (bIHbv24MWmeRgasZH58o)",
+      "model": "eleven_multilingual_v2",
+      "stability": 0.35,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "text": "Last one down buys the cocoa!"
+  },
+  {
+    "name": "say5",
+    "tts": {
+      "voice": "Will (bIHbv24MWmeRgasZH58o)",
+      "model": "eleven_multilingual_v2",
+      "stability": 0.35,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "text": "Woo! First tracks!"
+  },
+  {
+    "name": "say6",
+    "tts": {
+      "voice": "Will (bIHbv24MWmeRgasZH58o)",
+      "model": "eleven_multilingual_v2",
+      "stability": 0.35,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "text": "Yeti? Nah, bro."
+  },
+  {
+    "name": "say7",
+    "tts": {
+      "voice": "Will (bIHbv24MWmeRgasZH58o)",
+      "model": "eleven_multilingual_v2",
+      "stability": 0.35,
+      "similarity_boost": 0.8,
+      "style": 0.6
+    },
+    "text": "Hot tub's waiting!"
   }
 ]

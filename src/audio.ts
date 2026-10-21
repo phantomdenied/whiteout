@@ -14,7 +14,11 @@ const MASTER = 0.6;
 const YELL_S = 0.5;
 const SFX_URL = './sfx/';
 /** Recorded one-shots: file and playback gain (balanced by ear against each other). */
-const SAMPLES: Partial<Record<SoundName | 'step' | 'yell', [string, number]>> = {
+/** The skier's drop-in lines (one voice, ElevenLabs text to speech): say1.mp3 … say7.mp3. */
+const LINES = 7;
+type SampleName = SoundName | 'step' | 'yell' | `say${number}`;
+const SAMPLES: Partial<Record<SampleName, [string, number]>> = {
+  ...Object.fromEntries(Array.from({ length: LINES }, (_, i) => [`say${i + 1}`, [`say${i + 1}.mp3`, 0.7]])),
   roar: ['roar.mp3', 0.8], step: ['step.mp3', 0.9], crash: ['crash.mp3', 0.7], nearMiss: ['nearMiss.mp3', 0.45],
   jump: ['jump.mp3', 0.35], land: ['land.mp3', 0.4], trickLand: ['trickLand.mp3', 0.45], coin: ['coin.mp3', 0.35],
   gate: ['gate.mp3', 0.45], ignite: ['ignite.mp3', 0.22], burn: ['ignite.mp3', 0.4], eaten: ['eaten.mp3', 0.85], yell: ['yell.mp3', 0.5],
@@ -40,6 +44,8 @@ export class Sound {
   private stepClock = 0;
   /** Last values sent to the hiss, so automation is only scheduled when they change (Safari slows down otherwise). */
   private hissLevel = -1;
+  /** Last drop-in line said (1-based; 0 before the first). */
+  private lastLine = 0;
   private hissFreq = -1;
   private samples = new Map<string, AudioBuffer>();
   private loops: Partial<Record<LoopName, { gain: GainNode; src: AudioBufferSourceNode; level: number; rate: number }>> = {};
@@ -130,11 +136,11 @@ export class Sound {
         src.start(0, Math.random() * buf.duration);
         this.loops[name] = { gain, src, level: 0, rate: 1 };
       }),
-      ...[...new Set(Object.values(SAMPLES).map(([file]) => file))].map(load),
+      ...[...new Set(Object.values(SAMPLES).map((entry) => entry![0]))].map(load),
     ]);
   }
 
-  private playSample(name: SoundName | 'step' | 'yell', volume = 1, delay = 0): boolean {
+  private playSample(name: SampleName, volume = 1, delay = 0): boolean {
     const entry = SAMPLES[name];
     const buf = entry && this.samples.get(entry[0]);
     if (!this.ctx || !buf || !entry) return false;
@@ -220,6 +226,13 @@ export class Sound {
       this.stepClock = 0.6 - proximity * 0.38;
       if (!this.playSample('step', 0.35 + proximity * 0.65)) this.step(0.12 + proximity * 0.3);
     }
+  }
+
+  /** A random drop-in line from the skier, never the same one twice running. Recorded builds only. */
+  say() {
+    if (!this.ctx || this.muted) return;
+    const pick = 1 + ((this.lastLine + Math.floor(Math.random() * (LINES - 1))) % LINES);
+    if (this.playSample(`say${pick}`, 1, 0.15)) this.lastLine = pick;
   }
 
   play(name: SoundName) {

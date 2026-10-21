@@ -335,6 +335,7 @@ function follow(next: RunState) {
 
 function setMode(next: Mode) {
   const wasAttracting = attracting();
+  if (next === 'playing' && mode === 'intro') sound.say();
   mode = next;
   overlay.hidden = mode === 'playing';
   app.classList.toggle('attract', mode === 'attract');

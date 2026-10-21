@@ -1,7 +1,7 @@
 {
   "name": "whiteout",
   "private": true,
-  "version": "0.6.5",
+  "version": "0.6.6",
   "author": "?God Complex Studios",
   "type": "module",
   "scripts": {
