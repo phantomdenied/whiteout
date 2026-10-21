@@ -121,78 +121,64 @@
   {
     "name": "say1",
     "tts": {
-      "voice": "Will (bIHbv24MWmeRgasZH58o)",
-      "model": "eleven_multilingual_v2",
-      "stability": 0.35,
-      "similarity_boost": 0.8,
-      "style": 0.6
+      "voice": "Callum (N2lVS1w4EtoT3dr4eOWO)",
+      "model": "eleven_v3",
+      "stability": 0.0
     },
-    "text": "Let's shred!"
+    "text": "[excited] Let's shred!"
   },
   {
     "name": "say2",
     "tts": {
-      "voice": "Will (bIHbv24MWmeRgasZH58o)",
-      "model": "eleven_multilingual_v2",
-      "stability": 0.35,
-      "similarity_boost": 0.8,
-      "style": 0.6
+      "voice": "Callum (N2lVS1w4EtoT3dr4eOWO)",
+      "model": "eleven_v3",
+      "stability": 0.0
     },
-    "text": "Fresh pow, baby!"
+    "text": "[happy] Ohh, fresh pow, baby!"
   },
   {
     "name": "say3",
     "tts": {
-      "voice": "Will (bIHbv24MWmeRgasZH58o)",
-      "model": "eleven_multilingual_v2",
-      "stability": 0.35,
-      "similarity_boost": 0.8,
-      "style": 0.6
+      "voice": "Callum (N2lVS1w4EtoT3dr4eOWO)",
+      "model": "eleven_v3",
+      "stability": 0.0
     },
-    "text": "Send it!"
+    "text": "[laughs] Send it!"
   },
   {
     "name": "say4",
     "tts": {
-      "voice": "Will (bIHbv24MWmeRgasZH58o)",
-      "model": "eleven_multilingual_v2",
-      "stability": 0.35,
-      "similarity_boost": 0.8,
-      "style": 0.6
+      "voice": "Callum (N2lVS1w4EtoT3dr4eOWO)",
+      "model": "eleven_v3",
+      "stability": 0.0
     },
-    "text": "Last one down buys the cocoa!"
+    "text": "[playfully] Last one down buys the cocoa!"
   },
   {
     "name": "say5",
     "tts": {
-      "voice": "Will (bIHbv24MWmeRgasZH58o)",
-      "model": "eleven_multilingual_v2",
-      "stability": 0.35,
-      "similarity_boost": 0.8,
-      "style": 0.6
+      "voice": "Callum (N2lVS1w4EtoT3dr4eOWO)",
+      "model": "eleven_v3",
+      "stability": 0.0
     },
-    "text": "Woo! First tracks!"
+    "text": "[excited] Woo! First tracks!"
   },
   {
     "name": "say6",
     "tts": {
-      "voice": "Will (bIHbv24MWmeRgasZH58o)",
-      "model": "eleven_multilingual_v2",
-      "stability": 0.35,
-      "similarity_boost": 0.8,
-      "style": 0.6
+      "voice": "Callum (N2lVS1w4EtoT3dr4eOWO)",
+      "model": "eleven_v3",
+      "stability": 0.0
     },
-    "text": "Yeti? Nah, bro."
+    "text": "[scoffs] Yeti? Nah, bro."
   },
   {
     "name": "say7",
     "tts": {
-      "voice": "Will (bIHbv24MWmeRgasZH58o)",
-      "model": "eleven_multilingual_v2",
-      "stability": 0.35,
-      "similarity_boost": 0.8,
-      "style": 0.6
+      "voice": "Callum (N2lVS1w4EtoT3dr4eOWO)",
+      "model": "eleven_v3",
+      "stability": 0.0
     },
-    "text": "Hot tub's waiting!"
+    "text": "[relaxed] Hot tub's waiting."
   }
 ]

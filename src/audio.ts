@@ -14,11 +14,11 @@ const MASTER = 0.6;
 const YELL_S = 0.5;
 const SFX_URL = './sfx/';
 /** Recorded one-shots: file and playback gain (balanced by ear against each other). */
-/** The skier's drop-in lines (one voice, ElevenLabs text to speech): say1.mp3 … say7.mp3. */
+/** The skier's drop-in lines (one voice, ElevenLabs v3 text to speech): say1.mp3 … say7.mp3. */
 const LINES = 7;
 type SampleName = SoundName | 'step' | 'yell' | `say${number}`;
 const SAMPLES: Partial<Record<SampleName, [string, number]>> = {
-  ...Object.fromEntries(Array.from({ length: LINES }, (_, i) => [`say${i + 1}`, [`say${i + 1}.mp3`, 0.7]])),
+  ...Object.fromEntries(Array.from({ length: LINES }, (_, i) => [`say${i + 1}`, [`say${i + 1}.mp3`, 0.4]])),
   roar: ['roar.mp3', 0.8], step: ['step.mp3', 0.9], crash: ['crash.mp3', 0.7], nearMiss: ['nearMiss.mp3', 0.45],
   jump: ['jump.mp3', 0.35], land: ['land.mp3', 0.4], trickLand: ['trickLand.mp3', 0.45], coin: ['coin.mp3', 0.35],
   gate: ['gate.mp3', 0.45], ignite: ['ignite.mp3', 0.22], burn: ['ignite.mp3', 0.4], eaten: ['eaten.mp3', 0.85], yell: ['yell.mp3', 0.5],
@@ -202,12 +202,12 @@ export class Sound {
     if (!ctx || !this.hissGain || !this.hissFilter) return;
     const t = ctx.currentTime;
     const recordedHiss = !!this.loops.hiss;
-    this.setLoop('hiss', playing && !airborne ? Math.min(0.12, speed / 140) : 0, 0.85 + Math.min(speed, 22) / 70);
+    this.setLoop('hiss', playing && !airborne ? Math.min(0.06, speed / 280) : 0, 0.85 + Math.min(speed, 22) / 70);
     this.setLoop('wind', playing ? 0.22 : 0);
     this.setLoop('rumble', playing ? ambience.rumble * 0.9 : 0);
     this.setLoop('fire', playing ? ambience.fire * 0.45 : 0);
     // The synthesized hiss stands in only until the recorded one loads.
-    const hiss = playing && !airborne && !recordedHiss ? Math.round(Math.min(0.03, speed / 600) * 200) / 200 : 0;
+    const hiss = playing && !airborne && !recordedHiss ? Math.round(Math.min(0.015, speed / 1200) * 200) / 200 : 0;
     if (hiss !== this.hissLevel) {
       this.hissLevel = hiss;
       this.hissGain.gain.setTargetAtTime(hiss, t, 0.05);
