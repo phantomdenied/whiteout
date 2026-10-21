@@ -1,0 +1,44 @@
+name: Deploy to itch.io
+
+# Every push to main tests the game, packages the itch build and pushes it to
+# god-complex-studios.itch.io/whiteout with butler. Needs the repo secret BUTLER_API_KEY
+# (an itch.io API key); without it the job skips the upload instead of failing.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: itch
+  cancel-in-progress: true
+
+env:
+  ITCH_TARGET: god-complex-studios/whiteout:html5
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run package:itch
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          if [ -z "$BUTLER_API_KEY" ]; then
+            echo "::warning::BUTLER_API_KEY is not set, so nothing was uploaded to itch.io."
+            exit 0
+          fi
+          curl -sSfL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d butler && chmod +x butler/butler
+          ./butler/butler push release/itch "$ITCH_TARGET" --userversion "$(node -p "require('./package.json').version")"
