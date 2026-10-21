@@ -194,12 +194,12 @@ export class Sound {
     if (!ctx || !this.hissGain || !this.hissFilter) return;
     const t = ctx.currentTime;
     const recordedHiss = !!this.loops.hiss;
-    this.setLoop('hiss', playing && !airborne ? Math.min(0.22, speed / 80) : 0, 0.85 + Math.min(speed, 22) / 70);
+    this.setLoop('hiss', playing && !airborne ? Math.min(0.12, speed / 140) : 0, 0.85 + Math.min(speed, 22) / 70);
     this.setLoop('wind', playing ? 0.22 : 0);
     this.setLoop('rumble', playing ? ambience.rumble * 0.9 : 0);
     this.setLoop('fire', playing ? ambience.fire * 0.45 : 0);
     // The synthesized hiss stands in only until the recorded one loads.
-    const hiss = playing && !airborne && !recordedHiss ? Math.round(Math.min(0.05, speed / 360) * 200) / 200 : 0;
+    const hiss = playing && !airborne && !recordedHiss ? Math.round(Math.min(0.03, speed / 600) * 200) / 200 : 0;
     if (hiss !== this.hissLevel) {
       this.hissLevel = hiss;
       this.hissGain.gain.setTargetAtTime(hiss, t, 0.05);
