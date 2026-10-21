@@ -67,6 +67,8 @@ export interface ReportInput {
   mode: string;
   /** "Fun so far", 1–5, or null when not rated. */
   rating: number | null;
+  /** Which build: web (GitHub Pages), itch.io or the single file. */
+  build: string;
   /** The run, or null when none has started this visit. */
   run: RunState | null;
   /** The descent being skied (or just finished, or paused), or null on map and menu screens. */
@@ -80,6 +82,7 @@ export function buildReport(r: ReportInput): string {
   const lines: string[] = [];
   const add = (label: string, value: string) => lines.push(`${label}: ${value}`);
   lines.push(`${GAME_NAME} v${VERSION} · playtest report`);
+  add('Build', r.build);
   add('Fun so far', r.rating ? `${r.rating}/5` : 'not rated');
   add('Screen', r.mode);
   const run = r.run;

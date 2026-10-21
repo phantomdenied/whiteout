@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { newGame, step } from '../src/engine';
+import { buildTarget } from '../src/build';
 import { PLAY_URL, buildReport, deviceSummary } from '../src/playtest';
 import { newProfile } from '../src/profile';
 import { chooseNode, newRun, nodeSeed, paramsFor, runMods } from '../src/run';
@@ -28,9 +29,10 @@ describe('playtest kit', () => {
     const run = chooseNode(newRun(424242, 'rookie', { passives: { beacon: 2 } }), 0);
     const g = newGame(nodeSeed(run), { params: paramsFor(run), mods: runMods(run), snacks: run.snacks });
     for (let i = 0; i < 120; i++) step(g, { turn: 0, tuck: true, brake: false, jump: false });
-    const text = buildReport({ mode: 'playing', rating: 4, run, game: g, profile: newProfile(), device: deviceSummary(device) });
+    const text = buildReport({ mode: 'playing', rating: 4, build: 'itch.io', run, game: g, profile: newProfile(), device: deviceSummary(device) });
     expect(text).toContain(`Whiteout v${VERSION}`);
     expect(text).toContain('Fun so far: 4/5');
+    expect(text).toContain('Build: itch.io');
     expect(text).toContain(`Run seed: 424242 · replay: ${PLAY_URL}?seed=424242`);
     expect(text).toContain(`Slope seed: ${nodeSeed(run)}`);
     expect(text).toContain('Mountain 1 of 3 (Bunny Hill Range) · map row 1 of 7');
@@ -41,8 +43,18 @@ describe('playtest kit', () => {
     expect(text).toContain('Device: iOS 17.5 · Safari · 390×844 @3x');
   });
 
+  it('the build marker picks the build; anything unknown is the web build', () => {
+    const doc = (content: string | null) => ({
+      querySelector: () => (content === null ? null : ({ content } as unknown as Element)),
+    }) as unknown as Pick<Document, 'querySelector'>;
+    expect(buildTarget(doc('itch'))).toBe('itch');
+    expect(buildTarget(doc('single'))).toBe('single');
+    expect(buildTarget(doc('web'))).toBe('web');
+    expect(buildTarget(doc(null))).toBe('web');
+  });
+
   it('before any run, the report says so instead of showing a stale run', () => {
-    const text = buildReport({ mode: 'title', rating: null, run: null, game: null, profile: newProfile(), device: 'test' });
+    const text = buildReport({ mode: 'title', rating: null, build: 'web (GitHub Pages)', run: null, game: null, profile: newProfile(), device: 'test' });
     expect(text).toContain('Fun so far: not rated');
     expect(text).toContain('Run: none started yet');
     expect(text).not.toContain('Run seed');

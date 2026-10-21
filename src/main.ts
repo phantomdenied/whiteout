@@ -1,5 +1,6 @@
 import './style.css';
 import { VERSION } from './version';
+import { BUILD_LABEL, buildTarget } from './build';
 import { botInput } from './bot';
 import {
   BOSSES,
@@ -98,6 +99,7 @@ import {
 } from './run';
 
 const STUDIO = '?God Complex Studios';
+const BUILD = buildTarget();
 const HELP_SEEN_KEY = 'whiteout:help-seen';
 /** When the studio splash went away: the tap that skips it shouldn't also start the game. */
 let splashSkipped = -Infinity;
@@ -163,8 +165,8 @@ let pendingStart = 0;
 let lastPatches = 0;
 let installPrompt: (Event & { prompt: () => Promise<void> }) | null = null;
 
-// The single-file build (claude.ai Artifact) strips the manifest link and ships no sfx folder: synthesized sound only.
-const sound = new Sound(!!document.querySelector('link[rel="manifest"]'));
+// The single-file build (claude.ai Artifact) ships no sfx folder: synthesized sound only.
+const sound = new Sound(BUILD !== 'single');
 sound.setMuted(load(MUTE_KEY) === '1');
 
 const kitbar = $<HTMLDivElement>('#kitbar');
@@ -458,7 +460,8 @@ const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.pla
 const standalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 
 function installHtml(): string {
-  if (standalone()) return '';
+  // Installing is for the Pages build; on itch.io the game lives in itch's page, and the single file has no manifest.
+  if (BUILD !== 'web' || standalone()) return '';
   if (installPrompt) return '<button class="btn ghost small" id="install" type="button">Install app</button>';
   if (isIOS()) return '<p class="meta">Play full screen: Share → Add to Home Screen.</p>';
   return '';
@@ -1275,7 +1278,7 @@ function frame(now: number) {
 }
 
 // Offline play once installed: only on https (or localhost) and only in the real build, which links the manifest.
-if ('serviceWorker' in navigator && document.querySelector('link[rel="manifest"]') && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+if (BUILD === 'web' && 'serviceWorker' in navigator && document.querySelector('link[rel="manifest"]') && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 
@@ -1329,6 +1332,7 @@ function reportInput(screen: string) {
   return {
     mode: screen,
     rating: feedback.rating,
+    build: BUILD_LABEL[BUILD],
     run: inRun ? run : null,
     game: inRun && onDescent ? game : null,
     profile,

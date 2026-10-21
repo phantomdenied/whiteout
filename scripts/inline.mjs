@@ -10,7 +10,8 @@ html = html.replace(/<script type="module" crossorigin src="([^"]+)"><\/script>/
   return `<script type="module">${read(src).replace(/<\/script/g, '<\\/script')}</script>`;
 });
 html = html.replace(/<link rel="stylesheet" crossorigin href="([^"]+)">/, (_, href) => `<style>${read(href)}</style>`);
-// The single file has no manifest, icons or service worker beside it.
+// The single file has no manifest, icons, service worker or sfx folder beside it.
+html = html.replace('<meta name="whiteout:build" content="web" />', '<meta name="whiteout:build" content="single" />');
 html = html.replace(/\s*<link rel="(manifest|icon|apple-touch-icon)"[^>]*>/g, '');
 
 writeFileSync(new URL('whiteout.html', dist), html);

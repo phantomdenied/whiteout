@@ -2,7 +2,7 @@
 
 Whiteout is a downhill-skiing roguelike for phones by ?God Complex Studios. This page is for two people: the tester (what to try and how to send feedback) and the owner (how to share the build and invite testers).
 
-- **Play:** https://phantomdenied.github.io/whiteout/ (best on a phone, held upright)
+- **Play:** on itch.io, https://YOUR-ITCH-NAME.itch.io/whiteout (best on a phone, held upright)
 - **Send feedback:** the God Complex Studios Discord, https://dsc.gg/god-complex-studios, in the reports channel
 
 The build number shows on the How to play card (the **?** button) and at the top of every feedback report.
@@ -36,8 +36,8 @@ If you're playing the build on claude.ai, there's also a **Comment with this rep
 
 ### Share the build
 
-- **GitHub Pages (recommended for testers):** https://phantomdenied.github.io/whiteout/. Every push to `main` runs the tests and redeploys it. Testers can add it to their home screen and it works offline.
-- **claude.ai Artifact:** https://claude.ai/artifact/RaxP5iqEkxRSmKJ7EgzRkr is the single-file build (`npm run build:single`, `dist/artifact.html`; no recorded sound, so it uses the synthesized fallback). To let testers open it, set the artifact's **Share** menu to **Anyone with the link**. It declares `comments` (composer only), which is what shows the **Comment with this report** button.
+- **itch.io (where testers play):** run `npm run package:itch` and upload `release/whiteout-itch-v<version>.zip` to the game's itch page. Kind of project: **HTML**; tick **This file will be played in the browser**; embed size 480 × 854; tick **Mobile friendly** (orientation: portrait) and **Fullscreen button**. The itch build has recorded sound, no service worker or install prompt, and its reports say `Build: itch.io`.
+- **claude.ai Artifact (not for testers):** https://claude.ai/artifact/RaxP5iqEkxRSmKJ7EgzRkr is the single-file build (`npm run build:single`, `dist/artifact.html`; no recorded sound, so it uses the synthesized fallback). To let testers open it, set the artifact's **Share** menu to **Anyone with the link**. It declares `comments` (composer only), which is what shows the **Comment with this report** button.
 - **Discord:** make sure the invite behind https://dsc.gg/god-complex-studios is set to **never expire** and has no use limit, and that there's a channel for reports.
 - **Bump the version** for each build you send out: `VERSION` in `src/version.ts` and `version` in `package.json` (a test checks they match).
 
@@ -51,7 +51,7 @@ If you're playing the build on claude.ai, there's also a **Comment with this rep
 
 > 🎿 **Help test Whiteout!** It's a downhill-skiing roguelike for your phone: steer through the trees, tuck to outrun the yeti, and build your run with Gear across three mountains.
 >
-> Play here: https://phantomdenied.github.io/whiteout/ (best on a phone, held upright)
+> Play here: https://YOUR-ITCH-NAME.itch.io/whiteout (best on a phone, held upright)
 >
 > Play a run or two, then tap **Feedback** in the game, rate it, add a note and tap **Copy report**. Paste it in the reports channel on our Discord: https://dsc.gg/god-complex-studios
 >
