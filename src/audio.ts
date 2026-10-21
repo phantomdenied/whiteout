@@ -10,12 +10,14 @@ export type SoundName =
   | 'finish' | 'eaten' | 'buried' | 'burn' | 'click' | 'secret' | 'unlock' | 'gate' | 'ignite';
 
 const MASTER = 0.6;
+/** Gap between the skier's yell and the yeti's laugh when caught. */
+const YELL_S = 0.5;
 const SFX_URL = './sfx/';
 /** Recorded one-shots: file and playback gain (balanced by ear against each other). */
-const SAMPLES: Partial<Record<SoundName | 'step', [string, number]>> = {
+const SAMPLES: Partial<Record<SoundName | 'step' | 'yell', [string, number]>> = {
   roar: ['roar.mp3', 0.8], step: ['step.mp3', 0.9], crash: ['crash.mp3', 0.7], nearMiss: ['nearMiss.mp3', 0.45],
   jump: ['jump.mp3', 0.35], land: ['land.mp3', 0.4], trickLand: ['trickLand.mp3', 0.45], coin: ['coin.mp3', 0.35],
-  gate: ['gate.mp3', 0.45], ignite: ['ignite.mp3', 0.22], burn: ['ignite.mp3', 0.4], eaten: ['eaten.mp3', 0.85],
+  gate: ['gate.mp3', 0.45], ignite: ['ignite.mp3', 0.22], burn: ['ignite.mp3', 0.4], eaten: ['eaten.mp3', 0.85], yell: ['yell.mp3', 0.5],
   buried: ['buried.mp3', 0.85], finish: ['finish.mp3', 0.5], unlock: ['unlock.mp3', 0.55], click: ['click.mp3', 0.35],
   bounce: ['bounce.mp3', 0.5], snack: ['snack.mp3', 0.5], secret: ['secret.mp3', 0.6],
 };
@@ -132,7 +134,7 @@ export class Sound {
     ]);
   }
 
-  private playSample(name: SoundName | 'step', volume = 1): boolean {
+  private playSample(name: SoundName | 'step' | 'yell', volume = 1, delay = 0): boolean {
     const entry = SAMPLES[name];
     const buf = entry && this.samples.get(entry[0]);
     if (!this.ctx || !buf || !entry) return false;
@@ -143,7 +145,7 @@ export class Sound {
     const g = this.ctx.createGain();
     g.gain.value = entry[1] * volume;
     src.connect(g).connect(this.master!);
-    src.start();
+    src.start(this.ctx.currentTime + delay);
     return true;
   }
 
@@ -226,6 +228,11 @@ export class Sound {
       if (this.ctx.currentTime - this.lastIgnite < 0.07) return;
       this.lastIgnite = this.ctx.currentTime;
     }
+    // Caught: the skier's yell, then the yeti's laugh.
+    if (name === 'eaten' && this.playSample('yell')) {
+      if (!this.playSample('eaten', 1, YELL_S)) this.laugh(YELL_S);
+      return;
+    }
     if (this.playSample(name)) return;
     switch (name) {
       case 'roar':
@@ -265,8 +272,8 @@ export class Sound {
         this.arpeggio([523, 659, 784, 1047], 0.11, 'triangle', 0.12);
         break;
       case 'eaten':
-        // A falling "HA-HA-HA" stands in for the recorded laugh.
-        for (let i = 0; i < 4; i++) this.tone(150 - i * 18, 0.16, 'sawtooth', 0.2, 110 - i * 14, i * 0.2);
+        this.tone(900, 0.4, 'square', 0.1, 400);
+        this.laugh(YELL_S);
         break;
       case 'buried':
         this.noiseBurst(1.6, 0.5, 380, 'lowpass');
@@ -295,6 +302,11 @@ export class Sound {
   private step(vol: number) {
     this.tone(68, 0.14, 'sine', vol, 45);
     this.noiseBurst(0.08, vol * 0.6, 220, 'lowpass');
+  }
+
+  /** A falling "HA-HA-HA" that stands in for the recorded laugh. */
+  private laugh(delay: number) {
+    for (let i = 0; i < 4; i++) this.tone(150 - i * 18, 0.16, 'sawtooth', 0.2, 110 - i * 14, delay + i * 0.2);
   }
 
   private tone(freq: number, dur: number, type: OscillatorType, vol: number, slideTo?: number, delay = 0) {

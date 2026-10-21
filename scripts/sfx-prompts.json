@@ -112,5 +112,10 @@
     "name": "secret",
     "dur": 2,
     "text": "magical twinkle chime, mysterious discovery, sparkling, short"
+  },
+  {
+    "name": "yell",
+    "dur": 1,
+    "text": "short cartoon man scream cut off abruptly, 'AAH!', single quick panicked yell, comedic, dry, no music"
   }
 ]
