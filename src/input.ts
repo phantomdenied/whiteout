@@ -61,6 +61,8 @@ export class Controls {
     target.addEventListener('pointerup', (e) => this.up(e));
     target.addEventListener('pointercancel', (e) => this.up(e, true));
     window.addEventListener('keydown', (e) => {
+      // Typing in a text field (the feedback notes) never steers, jumps or mutes.
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea')) return;
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
       if (e.repeat) return;
       this.keys.add(e.key.toLowerCase());
@@ -123,7 +125,8 @@ export class Controls {
   }
 
   private down(e: PointerEvent) {
-    if (this.touch || (e.target as HTMLElement).closest('button')) return;
+    // Buttons, links, form fields and the playtest sheets are UI, not the slope.
+    if (this.touch || (e.target as HTMLElement).closest('button, a, input, textarea, .sheet-layer')) return;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     // Second tap of a double tap: jump on touch-down, for the quickest response.
     const double = e.timeStamp - this.lastTap.t < DOUBLE_TAP_MS

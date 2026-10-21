@@ -1160,3 +1160,213 @@ body {
   opacity: 0.7;
   font-size: 11px;
 }
+
+/* Playtest kit. The ? and Feedback buttons sit at the right end of the HUD's second row (the yeti meter
+   gives up the room), above the menu cards, on every screen but the attract demo. */
+.kitbar {
+  position: absolute;
+  top: 46px;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  z-index: 30;
+  display: flex;
+  gap: 6px;
+}
+
+.kit-btn {
+  height: 28px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.kit-btn:focus-visible {
+  outline: 3px solid var(--boundary);
+  outline-offset: 2px;
+}
+
+.kit-feedback {
+  width: auto;
+  padding: 0 10px;
+  background: var(--boundary);
+  color: var(--ink);
+}
+
+/* Leave the kit buttons their spot: the meter ends short of them, and menu cards start below them. */
+.hud-row:nth-child(2) {
+  padding-right: 128px;
+}
+
+#app:not(.attract) .overlay {
+  padding-top: 84px;
+}
+
+.sheet-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: rgba(20, 33, 43, 0.55);
+}
+
+/* A flex column that scrolls instead of squashing its children. */
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 18px;
+  border-radius: 6px;
+  background: #1b2a36;
+  color: var(--panel-ink);
+  box-shadow: 0 12px 40px rgba(20, 33, 43, 0.45);
+}
+
+.sheet > * {
+  flex-shrink: 0;
+}
+
+.sheet:focus {
+  outline: none;
+}
+
+.sheet h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.sheet .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rules {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+  line-height: 1.45;
+  color: #c8d4dd;
+}
+
+.rules li::marker {
+  color: var(--boundary);
+  font-family: var(--font-display);
+  font-weight: 900;
+}
+
+.rules b {
+  color: var(--panel-ink);
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.rating {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.rate {
+  min-height: 44px;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(238, 243, 247, 0.12);
+  color: var(--panel-ink);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.rate.on {
+  background: var(--boundary);
+  color: var(--ink);
+}
+
+.rate:focus-visible,
+.sheet textarea:focus-visible,
+.sheet a:focus-visible {
+  outline: 3px solid var(--boundary);
+  outline-offset: 2px;
+}
+
+.rate-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(238, 243, 247, 0.6);
+}
+
+/* 16px text keeps iOS Safari from zooming in when the field is focused. */
+.sheet textarea {
+  min-height: 96px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: #eef3f7;
+  color: var(--ink);
+  font: 16px/1.4 var(--font-body);
+  resize: vertical;
+}
+
+.report {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #d7e2ea;
+  font: 12px/1.45 ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.fb-status {
+  margin: 0;
+  min-height: 1.4em;
+  color: #ffd9a8;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.fb-status:empty {
+  min-height: 0;
+}
+
+.sheet .btn.discord {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  text-decoration: none;
+  line-height: 1.1;
+  padding-block: 8px;
+}
+
+.fb-url {
+  margin: -8px 0 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}

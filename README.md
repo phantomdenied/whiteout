@@ -6,7 +6,7 @@ A downhill-skiing roguelike for phones: every slope is a chase, and the yeti is 
 
 **Play it:** https://phantomdenied.github.io/whiteout/ (best on a phone, held upright)
 
-**Playtesting?** Play a run or two, then [leave feedback](https://github.com/phantomdenied/whiteout/issues/new?template=playtest.yml). Tap *Copy run summary* on the end screen and paste it in.
+**Playtesting?** See the [playtest guide](docs/playtest.md): play a run or two, tap **Feedback** in the game, rate it, add a note, **Copy report**, and paste it in the reports channel of the [God Complex Studios Discord](https://dsc.gg/god-complex-studios). The guide also has a ready-to-send invite message.
 
 **Status: M4 — everything but the final art.** Pick your route down three mountains on a branching map: Slopes and Black Diamonds, Lodges (shop), Warming Huts (rest) and Events (risky choices), and a boss on every Summit. Mountains 2 and 3 bring Conditions: Powder, Ice, Night, Fog and Avalanches. 30 Gear, 4 Snacks, 6 Curses. Runs save between nodes.
 

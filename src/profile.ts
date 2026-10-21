@@ -200,12 +200,16 @@ export function buyPinSlot(p: Profile): Profile {
 
 const KIND_GLYPH: Record<string, string> = { slope: '▫', diamond: '◆', lodge: '⌂', hut: '♨', event: '?', slalom: '⚑', burn: '🔥', summit: '▲' };
 
+/** The route a run took, one glyph per node, mountains separated by "|". */
+export const routeText = (run: RunState) =>
+  MOUNTAINS.map((_, m) => run.log.filter((e) => e.mountain === m).map((e) => KIND_GLYPH[e.kind]).join('')).filter(Boolean).join(' | ');
+
 /** Plain-text summary of a run, for pasting into feedback or sharing a Daily result. */
 export function runSummaryText(run: RunState, skierName: string, how: string | null): string {
   const descents = descentsDone(run);
   const style = run.results.reduce((t, r) => t + r.style, 0);
   const time = run.results.reduce((t, r) => t + r.time, 0);
-  const route = MOUNTAINS.map((_, m) => run.log.filter((e) => e.mountain === m).map((e) => KIND_GLYPH[e.kind]).join('')).filter(Boolean).join(' | ');
+  const route = routeText(run);
   const head = run.daily ? `Whiteout Daily ${run.daily}` : `Whiteout seed ${run.seed}${run.altitude ? ` · Altitude ${run.altitude}` : ''}`;
   const result = run.status === 'won' ? 'Made the last bus' : `${how ?? 'Eaten'} on mountain ${run.mountain + 1}`;
   return [

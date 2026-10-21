@@ -1,4 +1,5 @@
 import './style.css';
+import { VERSION } from './version';
 import { botInput } from './bot';
 import {
   BOSSES,
@@ -21,6 +22,7 @@ import { Sound, type SoundName } from './audio';
 import { SKIERS, SKIER_IDS, SLOT_LABEL, SNACKS, type SkierId, type SnackId, curseById, displaced, gearById } from './gear';
 import { Controls } from './input';
 import { CONDITION_IDS } from './slope';
+import { DISCORD_URL, GAME_NAME, buildReport, deviceSummary } from './playtest';
 import { GROUP_NAME, LIFT_PASS_TOKENS, PASSIVES, type PassiveGroup, passiveById } from './passives';
 import {
   FIRSTS,
@@ -96,6 +98,7 @@ import {
 } from './run';
 
 const STUDIO = '?God Complex Studios';
+const HELP_SEEN_KEY = 'whiteout:help-seen';
 /** When the studio splash went away: the tap that skips it shouldn't also start the game. */
 let splashSkipped = -Infinity;
 const BEST_KEY = 'whiteout:best';
@@ -162,6 +165,17 @@ let installPrompt: (Event & { prompt: () => Promise<void> }) | null = null;
 
 const sound = new Sound();
 sound.setMuted(load(MUTE_KEY) === '1');
+
+const kitbar = $<HTMLDivElement>('#kitbar');
+const sheetLayer = $<HTMLElement>('#sheet-layer');
+const sheet = $<HTMLDivElement>('#sheet');
+const sheetOpen = () => !sheetLayer.hidden;
+let sheetReturnFocus: HTMLElement | null = null;
+/** The tester's feedback so far this visit (kept while the sheet is closed and reopened). */
+const feedback: { rating: number | null; notes: string } = { rating: null, notes: '' };
+/** The claude.ai comments capability (composer only), when the game runs as an Artifact there. */
+type CommentsApi = { openComposer(target: { range: Range } | { element: Element }): Promise<{ opened: boolean }> };
+let comments: CommentsApi | null = null;
 
 const renderer = new Renderer(canvas);
 const controls = new Controls(app, () => game.skier.angle, onKey, () => game.skier.air > 0);
@@ -322,6 +336,7 @@ function setMode(next: Mode) {
   overlay.hidden = mode === 'playing';
   app.classList.toggle('attract', mode === 'attract');
   app.classList.toggle('demo', attracting());
+  kitbar.hidden = mode === 'attract';
   if (attracting() && !wasAttracting) newAttract();
   if (mode !== 'playing' && mode !== 'paused' && !attracting()) saveRun();
   const show: Record<Mode, () => void> = {
@@ -348,6 +363,11 @@ function pause() {
 }
 
 function onKey(key: string) {
+  // While a playtest sheet is open, keys belong to it (Escape closes it).
+  if (sheetOpen()) {
+    if (key === 'Escape') closeSheet();
+    return;
+  }
   if (mode === 'attract') {
     setMode('title');
     return;
@@ -380,7 +400,11 @@ snackBar.addEventListener('click', (e) => {
 });
 document.addEventListener('visibilitychange', () => document.hidden && pause());
 // Document level: steering captures the pointer, which retargets the click away from the overlay.
-document.addEventListener('click', () => mode === 'attract' && performance.now() - splashSkipped > 500 && setMode('title'));
+document.addEventListener('click', (e) => {
+  if (mode !== 'attract' || sheetOpen() || performance.now() - splashSkipped < 500) return;
+  if ((e.target as HTMLElement).closest('.sheet-layer, .kitbar')) return;
+  setMode('title');
+});
 for (const type of ['pointerdown', 'keydown'] as const) document.addEventListener(type, () => (lastInput = performance.now()), { capture: true });
 // Audio may only start from a user gesture.
 // Audio may only start from a user gesture, and iOS only counts a finished tap (touchend / click), not
@@ -1254,6 +1278,166 @@ if ('serviceWorker' in navigator && document.querySelector('link[rel="manifest"]
   window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 
+// ---------- Playtest kit ----------
+// How to play and Feedback sheets (docs/playtest.md), over whatever screen the tester is on. Opening one
+// pauses a descent. The feedback report is built by playtest.ts from the live state.
+
+function sheetHtmlOn(sel: string, type: string, fn: (el: HTMLElement, e: Event) => void) {
+  sheet.querySelectorAll<HTMLElement>(sel).forEach((el) => el.addEventListener(type, (e) => fn(el, e)));
+}
+
+function openSheet(html: string) {
+  pause();
+  sheetReturnFocus = document.activeElement as HTMLElement | null;
+  sheet.innerHTML = html;
+  sheetLayer.hidden = false;
+  // Focus the sheet itself (not a button at its end), so it opens at the top and keyboard users start there.
+  sheet.focus({ preventScroll: true });
+  sheet.scrollTop = 0;
+}
+
+function closeSheet() {
+  if (!sheetOpen()) return;
+  sheetLayer.hidden = true;
+  sheet.innerHTML = '';
+  sheetReturnFocus?.focus?.();
+}
+
+function showHelp() {
+  openSheet(`
+    <span class="eyebrow">How to play · v${VERSION}</span>
+    <h2 id="sheet-title">How to play</h2>
+    <ol class="rules">
+      <li><b>Ski down without getting caught.</b> Drag left or right anywhere to steer. A yeti starts chasing a few seconds into every slope.</li>
+      <li><b>Hold your thumb low to tuck.</b> A tuck outruns the yeti; cruising doesn't. Drag up to slow down. Crashing into trees and rocks costs you time.</li>
+      <li><b>Double-tap to jump</b> over rocks, stumps and dogs. While tucked, swipe up, left or right for a trick, and land before it ends.</li>
+      <li><b>Pick your route on the map:</b> Slopes, Black Diamonds (harder, better rewards), Lodges to shop, Warming Huts, Events and bonus stages. Beat the Summit boss on all 3 mountains to win.</li>
+      <li><b>Build your run.</b> After each descent you pick a reward. Gear adds up into a build; Snacks (top right while skiing) work once.</li>
+      <li><b>Buttons:</b> ❚❚ pauses, ? opens this card, Feedback sends us a report. On the title screen: New run, Daily run (the same mountain for everyone today), Chalet (spend Patches on passives) and Sound.</li>
+      <li><b>Getting caught ends the run,</b> but you keep the Patches you earned, so every run moves you forward.</li>
+    </ol>
+    <div class="actions"><button class="btn" id="help-close" type="button">Got it</button></div>
+    <span class="meta">${GAME_NAME} v${VERSION} · Keyboard: ← → steer, ↓ tuck, Space jump, ↓ with Z X C for tricks, M sound</span>`);
+  sheetHtmlOn('#help-close', 'click', closeSheet);
+}
+
+/** Where the tester is, for the report: the run only once one has started, the descent only while it's on screen. */
+function reportInput(screen: string) {
+  const inRun = run.log.length > 0 || run.results.length > 0 || !attracting();
+  const onDescent = mode === 'intro' || mode === 'playing' || mode === 'paused' || mode === 'won' || mode === 'lost';
+  return {
+    mode: screen,
+    rating: feedback.rating,
+    run: inRun ? run : null,
+    game: inRun && onDescent ? game : null,
+    profile,
+    device: deviceSummary({
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      maxTouchPoints: navigator.maxTouchPoints,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      dpr: window.devicePixelRatio || 1,
+      standalone: standalone(),
+    }),
+  };
+}
+
+const COPIED = 'Copied. Now tap Open the God Complex Studios Discord and paste it in the reports channel.';
+
+function showFeedback() {
+  const screen = mode === 'playing' ? 'skiing (paused to send feedback)' : mode;
+  const rate = [1, 2, 3, 4, 5].map((n) =>
+    `<button class="rate${feedback.rating === n ? ' on' : ''}" type="button" data-rate="${n}" aria-pressed="${feedback.rating === n}" aria-label="${n} out of 5">${n}</button>`).join('');
+  openSheet(`
+    <span class="eyebrow">Playtest · ${GAME_NAME} v${VERSION}</span>
+    <h2 id="sheet-title">Send feedback</h2>
+    <div class="field">
+      <span class="label" id="rate-label">Fun so far</span>
+      <div class="rating" role="group" aria-labelledby="rate-label">${rate}</div>
+      <span class="rate-ends" aria-hidden="true"><span>1 · not fun</span><span>5 · great</span></span>
+    </div>
+    <label class="field" for="fb-notes">
+      <span class="label">Notes</span>
+      <textarea id="fb-notes" rows="4" maxlength="2000" placeholder="What happened? What felt great, unfair or confusing?"></textarea>
+    </label>
+    <div class="field">
+      <span class="label">Report · added for you, nothing personal</span>
+      <pre id="fb-report" class="report"></pre>
+    </div>
+    <div class="actions">
+      <button class="btn" id="fb-copy" type="button">Copy report</button>
+      <button class="btn ghost" id="fb-comment" type="button" ${comments ? '' : 'hidden'}>Comment with this report</button>
+    </div>
+    <p id="fb-status" class="fb-status" role="status" aria-live="polite"></p>
+    <a class="btn ghost discord" id="fb-discord" href="${DISCORD_URL}" target="_blank" rel="noopener">Open the God Complex Studios Discord</a>
+    <p class="meta fb-url">${DISCORD_URL}</p>
+    <div class="actions"><button class="btn ghost" id="fb-close" type="button">Close</button></div>`);
+  const pre = sheet.querySelector<HTMLPreElement>('#fb-report')!;
+  const notes = sheet.querySelector<HTMLTextAreaElement>('#fb-notes')!;
+  const status = sheet.querySelector<HTMLParagraphElement>('#fb-status')!;
+  notes.value = feedback.notes;
+  const refresh = () => (pre.textContent = buildReport(reportInput(screen)));
+  refresh();
+  sheetHtmlOn('[data-rate]', 'click', (b) => {
+    feedback.rating = Number(b.dataset.rate);
+    sheet.querySelectorAll<HTMLButtonElement>('[data-rate]').forEach((x) => {
+      const on = Number(x.dataset.rate) === feedback.rating;
+      x.classList.toggle('on', on);
+      x.setAttribute('aria-pressed', String(on));
+    });
+    refresh();
+  });
+  notes.addEventListener('input', () => (feedback.notes = notes.value));
+  sheetHtmlOn('#fb-copy', 'click', async () => {
+    const text = `${feedback.notes.trim() ? `Notes:\n${feedback.notes.trim()}\n\n` : ''}${pre.textContent ?? ''}`;
+    try {
+      if (!navigator.clipboard) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(text);
+      status.textContent = COPIED;
+    } catch {
+      // Copying is blocked here: select the report so the tester can copy it by hand.
+      const range = document.createRange();
+      range.selectNodeContents(pre);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      status.textContent = "Couldn't copy automatically. The report is selected: copy it by hand (long-press, then Copy), and copy your notes too.";
+    }
+  });
+  sheetHtmlOn('#fb-comment', 'click', async (b) => {
+    if (!comments) return;
+    const range = document.createRange();
+    range.selectNodeContents(pre);
+    try {
+      const res = await comments.openComposer({ range });
+      status.textContent = res.opened ? 'Write your comment in the box that opened; the report is quoted for you.' : 'Finish or close the comment you already have open, then try again.';
+    } catch (e) {
+      if ((e as { code?: string })?.code === 'unavailable') b.hidden = true;
+      status.textContent = "Commenting isn't available here. Copy the report and post it in the Discord instead.";
+    }
+  });
+  sheetHtmlOn('#fb-close', 'click', closeSheet);
+}
+
+$<HTMLButtonElement>('#help-btn').addEventListener('click', showHelp);
+$<HTMLButtonElement>('#feedback-btn').addEventListener('click', showFeedback);
+// Tap the dimmed backdrop to close; Escape closes too (even from the notes field).
+sheetLayer.addEventListener('click', (e) => e.target === sheetLayer && closeSheet());
+sheetLayer.addEventListener('keydown', (e) => e.key === 'Escape' && closeSheet());
+
+// Inside a claude.ai Artifact viewer with comments declared, offer "Comment with this report". Every
+// window.claude access is optional, so the game runs the same anywhere else.
+void (async () => {
+  try {
+    const host = (window as unknown as { claude?: { use?: (name: string) => Promise<unknown> } }).claude;
+    comments = ((await host?.use?.('comments')) as CommentsApi | null | undefined) ?? null;
+  } catch {
+    comments = null;
+  }
+  if (comments) sheet.querySelector('#fb-comment')?.removeAttribute('hidden');
+})();
+
 // ?debug exposes the live game for automated browser tests.
 if (params.has('debug')) Object.assign(window, { whiteout: () => ({ game, mode }) });
 
@@ -1264,6 +1448,11 @@ const hideSplash = () => {
   splashSkipped = performance.now();
   splash.classList.add('gone');
   setTimeout(() => splash.remove(), 600);
+  // First launch only: the How to play card (remembered in storage; load/store never throw).
+  if (!BOT && !load(HELP_SEEN_KEY)) {
+    store(HELP_SEEN_KEY, '1');
+    showHelp();
+  }
 };
 splash.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
