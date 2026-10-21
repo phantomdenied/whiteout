@@ -47,12 +47,38 @@ If you're playing the build on claude.ai, there's also a **Comment with this rep
 - **Slope seed** is the one descent the tester was on, derived from the run seed.
 - **Where**, **Descent** and **Status** say what they were doing when they wrote it; **Route**, **Gear** and **Passives** describe their build.
 
-### Invite message (ready to send)
+### Discord post (ready to send)
 
-> 🎿 **Help test Whiteout!** It's a downhill-skiing roguelike for your phone: steer through the trees, tuck to outrun the yeti, and build your run with Gear across three mountains.
->
-> Play here: https://god-complex-studios.itch.io/whiteout (best on a phone, held upright)
->
-> Play a run or two, then tap **Feedback** in the game, rate it, add a note and tap **Copy report**. Paste it in the reports channel on our Discord: https://dsc.gg/god-complex-studios
->
-> The art is placeholder for now. Thanks for playing!
+Under Discord's 2,000-character limit. Update the version number when you repost it.
+
+```
+## 🎿 WHITEOUT is ready to test!
+A downhill-skiing roguelike for your phone from **?God Complex Studios**. Ski down three mountains, build your run with Gear, and stay ahead of the yeti. It *will* catch you. It will laugh about it.
+
+▶️ **Play in your browser:** https://god-complex-studios.itch.io/whiteout
+Best on a phone, held upright. Tap the fullscreen button.
+
+**How to play**
+• Drag your thumb to steer. Hold it low on the screen to **tuck** and go faster.
+• **Double-tap** to jump.
+• While tucked, **swipe up, left or right** for a trick (Spread Eagle, Helicopter, Backflip). Chain them for bigger combos.
+• Tap **?** in the game any time for the full rules.
+
+**What's in this build (v0.6.5)**
+🗺️ Pick your route: Black Diamonds, Lodges, Events, and a boss at every Summit
+🚩 Bonus stages: **Slalom** gates and **Burning Man** (you're on fire, so torch the forest)
+🌊 Avalanches on Black Diamonds. They need a near-perfect run and the right upgrades.
+🌙 Night slopes with a headlamp… and red eyes in the dark
+🏔️ The Chalet: earn Patches, buy permanent perks, and grab Lift Passes to start further up the mountain
+📅 A Daily run: the same mountain for everyone today
+🔊 All-new sound, including a yeti with opinions
+🍄 …and at least one secret
+
+**Send feedback (takes 1 minute)**
+1. Tap **Feedback** (top right). The game pauses.
+2. Rate it 1–5 and write what felt great, unfair or confusing.
+3. Tap **Copy report**, then paste it in #reports here.
+The report includes your seed, so we can replay your exact run. Nothing personal is in it.
+
+Art is still placeholder. Thanks for playing! ❤️
+```
