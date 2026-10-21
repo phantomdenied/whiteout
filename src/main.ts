@@ -163,7 +163,8 @@ let pendingStart = 0;
 let lastPatches = 0;
 let installPrompt: (Event & { prompt: () => Promise<void> }) | null = null;
 
-const sound = new Sound();
+// The single-file build (claude.ai Artifact) strips the manifest link and ships no sfx folder: synthesized sound only.
+const sound = new Sound(!!document.querySelector('link[rel="manifest"]'));
 sound.setMuted(load(MUTE_KEY) === '1');
 
 const kitbar = $<HTMLDivElement>('#kitbar');

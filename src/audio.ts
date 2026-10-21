@@ -45,6 +45,9 @@ export class Sound {
   private lastIgnite = 0;
   muted = false;
 
+  /** `recordings: false` plays only the synthesized sounds (the single-file build ships no sfx folder). */
+  constructor(private recordings = true) {}
+
   /** Create (or resume) the audio context. Call from a click / tap handler. */
   unlock() {
     if (this.ctx) {
@@ -91,7 +94,7 @@ export class Sound {
       this.hissGain.gain.value = 0;
       src.connect(this.hissFilter).connect(this.hissGain).connect(this.master);
       src.start();
-      void this.loadSamples(ctx);
+      if (this.recordings) void this.loadSamples(ctx);
     } catch {
       this.ctx = null;
     }
