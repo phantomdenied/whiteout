@@ -1,0 +1,6 @@
+.DS_Store
+outputs/
+*.log
+*.tmp
+
+# 公开仓库只保留空白知识库；提交前必须再次验证 games: []。

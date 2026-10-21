@@ -1,0 +1,392 @@
+{
+  "version": "3.0.0",
+  "sourceMarkdownSha256": "bc46d21d77e56fdfaacf91f702b5d2dddabca18879f04cd9df6f1789fad212f7",
+  "sourceDocxSha256": "28f829b36754be17533f0148d88374e540ad5243fe560a82733d7ccf1ce24dab",
+  "sharedDocument": "shared/global.md",
+  "systems": [
+    {
+      "id": "S01",
+      "name": "实时战斗系统",
+      "document": "systems/S01.md",
+      "sha256": "2657b62b4c2b80b971d9e0e5c7314c1f3e3bf649af96170533bc2f8550ac2b92"
+    },
+    {
+      "id": "S02",
+      "name": "回合战斗系统",
+      "document": "systems/S02.md",
+      "sha256": "844f2d2b1af92ca83109739a7587d86e091ae47c0808612fa8680cb55298d2ed"
+    },
+    {
+      "id": "S03",
+      "name": "射击战斗系统",
+      "document": "systems/S03.md",
+      "sha256": "19ff57cae418285268c099ab7254ff12fd2c14c06a56e2df52892e713689d60d"
+    },
+    {
+      "id": "S04",
+      "name": "卡牌战斗与卡组系统",
+      "document": "systems/S04.md",
+      "sha256": "dd4f648851e1588398d20124e7fe06f52351bc0d65dbdb035f1502f25aa9bd8b"
+    },
+    {
+      "id": "S05",
+      "name": "阵容与自动战斗系统",
+      "document": "systems/S05.md",
+      "sha256": "a45c92610386cefdcff8b9c09e1d36ebe540cc9daf9aa5f00fe5f82fdc13439c"
+    },
+    {
+      "id": "S06",
+      "name": "谜题与机关系统",
+      "document": "systems/S06.md",
+      "sha256": "860a35ee4311cddc3afbfb62eba01ec02ae3dd5fdfcf72df83d1d4e0de42cb7f"
+    },
+    {
+      "id": "S07",
+      "name": "对话系统",
+      "document": "systems/S07.md",
+      "sha256": "40528c745057321a2503e1466332852abb109c865f9cca7b7c6268be8daae403"
+    },
+    {
+      "id": "S08",
+      "name": "剧情线与分支系统",
+      "document": "systems/S08.md",
+      "sha256": "df820f711763437559d946b4ce9361688e73667585cd1b9786a512835de0a2ea"
+    },
+    {
+      "id": "S09",
+      "name": "关系、好感与结局系统",
+      "document": "systems/S09.md",
+      "sha256": "6af23adbc983fec75a38f0a05f0f912b028efe48ddf7da82626d9c9101d4c6f0"
+    },
+    {
+      "id": "S10",
+      "name": "关卡、波次与检查点系统",
+      "document": "systems/S10.md",
+      "sha256": "28a00d2c78d90bbe7ce79a25e4bfd9ea4b27245d3caa4075a9533eb235aa3f3d"
+    },
+    {
+      "id": "S11",
+      "name": "地图、世界与探索系统",
+      "document": "systems/S11.md",
+      "sha256": "e1e8fb4d33a0c1ee61bbd78967b67c9ac015113032b5b7fa6b2c40939b8e8e8f"
+    },
+    {
+      "id": "S12",
+      "name": "物理与交互系统",
+      "document": "systems/S12.md",
+      "sha256": "0d7b01c29a6c96bd930c9a898aa420565caf43bbe9ef5747419eec1ecfa51dc6"
+    },
+    {
+      "id": "S13",
+      "name": "节奏与判定系统",
+      "document": "systems/S13.md",
+      "sha256": "2d99d6d6efca7e11f93adc513d437dbab7fa274e9aa660114bae440964371e02"
+    },
+    {
+      "id": "S14",
+      "name": "竞速、车辆与赛道系统",
+      "document": "systems/S14.md",
+      "sha256": "e6422cc79297d6f22dc522e18927308829fa2fc1b2ab0227cbb01b0146148a7b"
+    },
+    {
+      "id": "S15",
+      "name": "生存状态系统",
+      "document": "systems/S15.md",
+      "sha256": "b9b088dd3703617cfc0f2f886590aa94cdcee2480f6189398c9a1999bad6cc0c"
+    },
+    {
+      "id": "S16",
+      "name": "角色与角色档案系统",
+      "document": "systems/S16.md",
+      "sha256": "724e78f29e09efe3b60a8c5ac962bb5ead60780e7033d9ce3d7436448c115717"
+    },
+    {
+      "id": "S17",
+      "name": "属性、状态与Buff系统",
+      "document": "systems/S17.md",
+      "sha256": "4e84b036ddc922aaca3feab152e9562298bb60a61135b665dfe587d843909bef"
+    },
+    {
+      "id": "S18",
+      "name": "技能、天赋与能力系统",
+      "document": "systems/S18.md",
+      "sha256": "5daeb16d28579e0704244f78a044fad3b9cf8622118ae11ce775e2457473ff9d"
+    },
+    {
+      "id": "S19",
+      "name": "装备、武器与配件系统",
+      "document": "systems/S19.md",
+      "sha256": "c174c314674f65fd59ec83001425df14444613f4a4475f4753a49338b02c456e"
+    },
+    {
+      "id": "S20",
+      "name": "背包、仓库与物品系统",
+      "document": "systems/S20.md",
+      "sha256": "592edc8d13d1724af8cc069ee2e2cd35058bc01fddd8a86d6ae03ecb1c314942"
+    },
+    {
+      "id": "S21",
+      "name": "掉落、战利品与奖励池系统",
+      "document": "systems/S21.md",
+      "sha256": "983978228d8f29e847c088619b5e8af6e658d2ecf58586407ea26dfec0715518"
+    },
+    {
+      "id": "S22",
+      "name": "制作、合成与分解系统",
+      "document": "systems/S22.md",
+      "sha256": "ebe23c2cc58c5359c1e2edb8b48fff1fd5acceac80fec2c01d1713813cd080b7"
+    },
+    {
+      "id": "S23",
+      "name": "任务、目标与成就系统",
+      "document": "systems/S23.md",
+      "sha256": "3ec5a7d21f145ee5f5d19ed591a7b33ccac99d62c57898f509b74de2e5a12358"
+    },
+    {
+      "id": "S24",
+      "name": "收藏、图鉴与画廊系统",
+      "document": "systems/S24.md",
+      "sha256": "bd76067f41390b0262cc0e9c36b9bf8efa027881b6eaa22f661047bb04f0e21b"
+    },
+    {
+      "id": "S25",
+      "name": "货币、资源与经济系统",
+      "document": "systems/S25.md",
+      "sha256": "354f20f8c2b5e01a3accb2df889fa60b44404fe6141cfad7f6f6b7c3a1a694a6"
+    },
+    {
+      "id": "S26",
+      "name": "商店、交易与拍卖系统",
+      "document": "systems/S26.md",
+      "sha256": "792ab40c8cad15b62a12d739837c047b0c952a72deaa2f2671644a13996fe8d4"
+    },
+    {
+      "id": "S27",
+      "name": "抽取、卡池与保底系统",
+      "document": "systems/S27.md",
+      "sha256": "786722e01af8e8c872c7dc6b0b30a122b143224ba44dba287f7f2bdb3d09eb59"
+    },
+    {
+      "id": "S28",
+      "name": "养成、升级与突破系统",
+      "document": "systems/S28.md",
+      "sha256": "fafda87ffa13b360761167029e97d237c97df39f6f6315e05eba618b009c79a4"
+    },
+    {
+      "id": "S29",
+      "name": "建筑、城建与空间规划系统",
+      "document": "systems/S29.md",
+      "sha256": "438ff8232eac7adac12d5cb1ced37f0616eec3283a4d43e29802e4721f2895c4"
+    },
+    {
+      "id": "S30",
+      "name": "生产、订单与离线收益系统",
+      "document": "systems/S30.md",
+      "sha256": "82dadf223411f8e5e85eb66d27cf729f27117df4ca04cfde7fa795702f57620a"
+    },
+    {
+      "id": "S31",
+      "name": "科技树、政策与研究系统",
+      "document": "systems/S31.md",
+      "sha256": "792c62893015d57c5de63d8c20a6988270f601f652aa72018ac566e7b3b9ee85"
+    },
+    {
+      "id": "S32",
+      "name": "军队、战争与领土系统",
+      "document": "systems/S32.md",
+      "sha256": "a7ad824fd90e0e883e9f6bb51d0350109668e1c83ca893021b9e0bf454d71569"
+    },
+    {
+      "id": "S33",
+      "name": "联盟、公会与外交系统",
+      "document": "systems/S33.md",
+      "sha256": "70c3468364eea6c9d0b7ed742dbe7b3beb66ba54076fa5481d8c4bbf2f0aaad3"
+    },
+    {
+      "id": "S34",
+      "name": "好友、聊天与社交系统",
+      "document": "systems/S34.md",
+      "sha256": "f1744ab13af6916072786964b4c0abf93c8b7e563835c5edfc53d3f89d371627"
+    },
+    {
+      "id": "S35",
+      "name": "匹配、房间与组队系统",
+      "document": "systems/S35.md",
+      "sha256": "490d83b3efee54514416703afe4020545def735ef6a9c40ad43f2e40b5de4216"
+    },
+    {
+      "id": "S36",
+      "name": "排行榜、段位与赛季系统",
+      "document": "systems/S36.md",
+      "sha256": "1b3241e7392911f059a7809b080f8a6a316d856a5043ae4ad94257bedab537d6"
+    },
+    {
+      "id": "S37",
+      "name": "AI、NPC与行为系统",
+      "document": "systems/S37.md",
+      "sha256": "9a14da336a3aa488667edf29e0798eea8bf90b796448b4bbf0ee9a99c01ee02c"
+    },
+    {
+      "id": "S38",
+      "name": "存档、账号与玩家档案系统",
+      "document": "systems/S38.md",
+      "sha256": "ebdf14b2cfaee0c9d16647d1bdda6b2c5396d40c24f3c5fd2ef6771d6f844768"
+    },
+    {
+      "id": "S39",
+      "name": "教程、新手引导与帮助系统",
+      "document": "systems/S39.md",
+      "sha256": "3dfdfb45366dd6a490f57cc54166138bbf400b9a245ed061dc58570ed54b59c5"
+    },
+    {
+      "id": "S40",
+      "name": "活动、日历与LiveOps系统",
+      "document": "systems/S40.md",
+      "sha256": "5c3729aec4d785289cb824175fdde1ae5ad4e614fc140ed836fa56356fd9b313"
+    },
+    {
+      "id": "S41",
+      "name": "商业化、支付与广告系统",
+      "document": "systems/S41.md",
+      "sha256": "f075c2dabdbc3691c5589b47aa57d5496f87a4807001bc4f22d42b66a297ae41"
+    },
+    {
+      "id": "S42",
+      "name": "文案、本地化与叙事资源系统",
+      "document": "systems/S42.md",
+      "sha256": "c60b3de6d94c23f697477cb66cf0ae15e9fa49ae30a29e35ae2a633409063fd6"
+    },
+    {
+      "id": "S43",
+      "name": "埋点、指标与日志系统",
+      "document": "systems/S43.md",
+      "sha256": "2df1e596a7f0a40337dbf4e341a9a68b06ac63217db5aef99dd5109ca0ab7ba4"
+    },
+    {
+      "id": "S44",
+      "name": "资源加载、Manifest与热更新系统",
+      "document": "systems/S44.md",
+      "sha256": "95d0fa5836752fd272c8337c01de09de0a82446630469a90fd8b64bb7ee4ca00"
+    },
+    {
+      "id": "S45",
+      "name": "音频、语音与混音系统",
+      "document": "systems/S45.md",
+      "sha256": "22d347151c009561a368e067aa4962b509088c9397ea1d4d07022e7af97a60bf"
+    },
+    {
+      "id": "S46",
+      "name": "设置、可访问性与设备适配系统",
+      "document": "systems/S46.md",
+      "sha256": "607ed319c99bb4f1a83f0488b3013ac8ab56fcd643a2d1535603fee9b4df50b6"
+    },
+    {
+      "id": "S47",
+      "name": "UGC编辑器、发布与审核系统",
+      "document": "systems/S47.md",
+      "sha256": "d753771ba9a328b2f9c7603e11707205d5c4769d4ca08092d42bbf7d3015f7b1"
+    },
+    {
+      "id": "S48",
+      "name": "邮件、附件与补偿系统",
+      "document": "systems/S48.md",
+      "sha256": "69c17f13a365a9dac96af1ffced71f5a7b163062751a8fc5d8aa96514d64e806"
+    },
+    {
+      "id": "S49",
+      "name": "实名认证与防沉迷系统",
+      "document": "systems/S49.md",
+      "sha256": "6d6da7d759464b67afff0620b146836f9412541188b43ad7ab0d5c40f759d1da"
+    },
+    {
+      "id": "S50",
+      "name": "红点、角标与通知聚合系统",
+      "document": "systems/S50.md",
+      "sha256": "9920f07ca007093de2c0bc387605f4390801dc5c74170c4c1a7f86838e0c2b56"
+    },
+    {
+      "id": "S51",
+      "name": "运营后台、GM工具与数据看板系统",
+      "document": "systems/S51.md",
+      "sha256": "c065f83457e9d7ffc2b1cd43c3a92454706f06916e64708059166854e5c7b8dd"
+    },
+    {
+      "id": "S52",
+      "name": "灰度发布与A/B测试系统",
+      "document": "systems/S52.md",
+      "sha256": "bc6059024061551f9a2236a5452fc877208976d02d39aadddfcedf918ab3cfb0"
+    },
+    {
+      "id": "S53",
+      "name": "风控、反作弊与处罚系统",
+      "document": "systems/S53.md",
+      "sha256": "8bd6d51a8e620f5e2a27e22520b514b8c4d84ae247ea0fb81e3378415f280640"
+    },
+    {
+      "id": "S54",
+      "name": "分享、邀请与裂变传播系统",
+      "document": "systems/S54.md",
+      "sha256": "ceae687538619760806f516e9d63e7993522a317917aac8992648d62bdea4353"
+    },
+    {
+      "id": "S55",
+      "name": "网络同步、帧同步与断线重连系统",
+      "document": "systems/S55.md",
+      "sha256": "e7630896da2261847d37ff881ba269783cc36071b2148f6e2b65fe4efba1ce5a"
+    },
+    {
+      "id": "S56",
+      "name": "兑换码与礼包码系统",
+      "document": "systems/S56.md",
+      "sha256": "16f7390d5a315ecf5258aeeb724ad26d2e488abc9c99630962651b857e719009"
+    },
+    {
+      "id": "S57",
+      "name": "客服工单与玩家反馈系统",
+      "document": "systems/S57.md",
+      "sha256": "d223b9aac878c0ac6b430b7e2ca78bc3d9a0162bd7f94d49bbc4097f12525493"
+    },
+    {
+      "id": "S58",
+      "name": "推送通知与召回系统",
+      "document": "systems/S58.md",
+      "sha256": "02efe4d0c2bd13c39685b4e22c117226cd6335dfbd5519aa71c50175fd274685"
+    },
+    {
+      "id": "S59",
+      "name": "装扮、外观、称号与头像框系统",
+      "document": "systems/S59.md",
+      "sha256": "9da4394b6f23851704b44c927c35952886fa011309f10e5cc8975c4c51b214dd"
+    },
+    {
+      "id": "S60",
+      "name": "隐私合规与权限聚合系统",
+      "document": "systems/S60.md",
+      "sha256": "66751c5c3441020db493c98aee056f5907d12e2bd9372800e1e9bceb1a8c13bd"
+    },
+    {
+      "id": "S61",
+      "name": "寻路、导航与路线引导系统",
+      "document": "systems/S61.md",
+      "sha256": "73060d04766bba1d2741c216e29e48d7617248ac7b9570a71e6546d8539812d9"
+    },
+    {
+      "id": "S62",
+      "name": "版本发布、CI/CD与上架审核系统",
+      "document": "systems/S62.md",
+      "sha256": "6672df7681584285da2c1efa07d3d67c82c4e51af8c22e0d473c0b9c2e8c31e5"
+    },
+    {
+      "id": "S63",
+      "name": "关卡设计与难度曲线文档系统",
+      "document": "systems/S63.md",
+      "sha256": "7f9333a24d413f741c85592e7ddab63ca18c8d419a780cd01cce0c9c1cd0d7a8"
+    },
+    {
+      "id": "S64",
+      "name": "术语表、变更记录与决策日志系统",
+      "document": "systems/S64.md",
+      "sha256": "e94e4f5befc7d8c4a926b63f8b8542b8c253f223872d49b3d2e26710ed7ac0ff"
+    }
+  ]
+}
