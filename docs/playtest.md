@@ -2,7 +2,7 @@
 
 Whiteout is a downhill-skiing roguelike for phones by ?God Complex Studios. This page is for two people: the tester (what to try and how to send feedback) and the owner (how to share the build and invite testers).
 
-- **Play:** on itch.io, https://YOUR-ITCH-NAME.itch.io/whiteout (best on a phone, held upright)
+- **Play:** on itch.io, https://god-complex-studios.itch.io/whiteout (best on a phone, held upright)
 - **Send feedback:** the God Complex Studios Discord, https://dsc.gg/god-complex-studios, in the reports channel
 
 The build number shows on the How to play card (the **?** button) and at the top of every feedback report.
@@ -51,7 +51,7 @@ If you're playing the build on claude.ai, there's also a **Comment with this rep
 
 > 🎿 **Help test Whiteout!** It's a downhill-skiing roguelike for your phone: steer through the trees, tuck to outrun the yeti, and build your run with Gear across three mountains.
 >
-> Play here: https://YOUR-ITCH-NAME.itch.io/whiteout (best on a phone, held upright)
+> Play here: https://god-complex-studios.itch.io/whiteout (best on a phone, held upright)
 >
 > Play a run or two, then tap **Feedback** in the game, rate it, add a note and tap **Copy report**. Paste it in the reports channel on our Discord: https://dsc.gg/god-complex-studios
 >
