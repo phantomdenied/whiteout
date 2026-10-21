@@ -194,12 +194,12 @@ export class Sound {
     if (!ctx || !this.hissGain || !this.hissFilter) return;
     const t = ctx.currentTime;
     const recordedHiss = !!this.loops.hiss;
-    this.setLoop('hiss', playing && !airborne ? Math.min(0.55, speed / 32) : 0, 0.85 + Math.min(speed, 22) / 70);
+    this.setLoop('hiss', playing && !airborne ? Math.min(0.22, speed / 80) : 0, 0.85 + Math.min(speed, 22) / 70);
     this.setLoop('wind', playing ? 0.22 : 0);
     this.setLoop('rumble', playing ? ambience.rumble * 0.9 : 0);
     this.setLoop('fire', playing ? ambience.fire * 0.45 : 0);
     // The synthesized hiss stands in only until the recorded one loads.
-    const hiss = playing && !airborne && !recordedHiss ? Math.round(Math.min(0.12, speed / 150) * 200) / 200 : 0;
+    const hiss = playing && !airborne && !recordedHiss ? Math.round(Math.min(0.05, speed / 360) * 200) / 200 : 0;
     if (hiss !== this.hissLevel) {
       this.hissLevel = hiss;
       this.hissGain.gain.setTargetAtTime(hiss, t, 0.05);
@@ -265,8 +265,8 @@ export class Sound {
         this.arpeggio([523, 659, 784, 1047], 0.11, 'triangle', 0.12);
         break;
       case 'eaten':
-        this.tone(85, 0.9, 'sawtooth', 0.25, 55);
-        for (let i = 0; i < 3; i++) this.noiseBurst(0.12, 0.3, 900, 'lowpass', undefined, 0.35 + i * 0.22);
+        // A falling "HA-HA-HA" stands in for the recorded laugh.
+        for (let i = 0; i < 4; i++) this.tone(150 - i * 18, 0.16, 'sawtooth', 0.2, 110 - i * 14, i * 0.2);
         break;
       case 'buried':
         this.noiseBurst(1.6, 0.5, 380, 'lowpass');

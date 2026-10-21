@@ -1268,7 +1268,7 @@ function frame(now: number) {
   }
   const air = game.skier.air > 0;
   const wall = game.wall?.armed ? game.wall : null;
-  sound.update(dt, mode === 'playing', game.skier.speed, air, mode === 'playing' ? yetiProximity(game) : 0, {
+  sound.update(dt, mode === 'playing', game.skier.speed, air, mode === 'playing' && game.skier.state !== 'eaten' ? yetiProximity(game) : 0, {
     rumble: wall ? Math.max(0, 1 - (game.skier.y - wall.y) / 30) : 0,
     fire: game.params.burn ? game.fuel : 0,
   });
